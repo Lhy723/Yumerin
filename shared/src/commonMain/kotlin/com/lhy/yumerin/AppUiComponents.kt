@@ -1,0 +1,529 @@
+package com.lhy.yumerin
+
+import androidx.compose.animation.*
+import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.*
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.*
+import androidx.compose.ui.draw.*
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.vector.*
+import androidx.compose.ui.layout.*
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.*
+import androidx.compose.ui.text.style.*
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.lhy.yumerin.core.model.*
+import com.lhy.yumerin.data.memory.*
+import com.lhy.yumerin.designsystem.*
+import com.lhy.yumerin.domain.*
+import com.lhy.yumerin.domain.agent.*
+import com.lhy.yumerin.domain.memory.*
+import com.lhy.yumerin.domain.repository.*
+import com.lhy.yumerin.domain.usecase.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
+import kotlin.time.Clock
+
+@Composable
+internal fun PageColumn(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        content = content
+    )
+}
+
+
+@Composable
+internal fun GlassBackButton(
+    backdrop: Backdrop,
+    onClick: () -> Unit
+) {
+    GlassSurface(
+        backdrop = backdrop,
+        modifier = Modifier
+            .size(52.dp)
+            .clip(CircleShape)
+            .clickable(onClick = onClick),
+        shape = CircleShape
+    ) {
+        Icon(
+            imageVector = YumerinBackArrow,
+            contentDescription = "返回",
+            tint = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier
+                .size(24.dp)
+                .align(Alignment.Center)
+        )
+    }
+}
+
+@Composable
+internal fun GlassMoreButton(
+    backdrop: Backdrop,
+    onClick: () -> Unit
+) {
+    GlassSurface(
+        backdrop = backdrop,
+        modifier = Modifier
+            .size(52.dp)
+            .clip(CircleShape)
+            .clickable(onClick = onClick),
+        shape = CircleShape
+    ) {
+        Icon(
+            imageVector = YumerinMoreIcon,
+            contentDescription = "更多设置",
+            tint = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier
+                .size(24.dp)
+                .align(Alignment.Center)
+        )
+    }
+}
+
+@Composable
+internal fun GlassIconButton(
+    backdrop: Backdrop,
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    GlassSurface(
+        backdrop = backdrop,
+        modifier = modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .clickable(onClick = onClick),
+        shape = CircleShape
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier
+                .size(22.dp)
+                .align(Alignment.Center)
+        )
+    }
+}
+
+@Composable
+internal fun GlassSendButton(
+    backdrop: Backdrop,
+    sending: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    LiquidGlassSurface(
+        backdrop = backdrop,
+        modifier = Modifier
+            .size(52.dp)
+            .clip(CircleShape)
+            .clickable(enabled = enabled, onClick = onClick),
+        shape = CircleShape,
+        surfaceAlpha = if (enabled) 0.5f else 0.3f
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .align(Alignment.Center)
+                .clip(CircleShape)
+                .background(
+                    if (enabled) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.surfaceVariant
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = if (sending) YumerinStopIcon else YumerinSendIcon,
+                contentDescription = if (sending) "停止生成" else "发送",
+                tint = if (enabled) MaterialTheme.colorScheme.onPrimary
+                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
+                modifier = Modifier.size(21.dp)
+            )
+        }
+    }
+}
+
+private val YumerinBackArrow: ImageVector = ImageVector.Builder(
+    name = "YumerinBackArrow",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f
+).apply {
+    path(fill = SolidColor(Color.Black)) {
+        moveTo(20f, 11f)
+        lineTo(7.83f, 11f)
+        lineTo(13.42f, 5.41f)
+        lineTo(12f, 4f)
+        lineTo(4f, 12f)
+        lineTo(12f, 20f)
+        lineTo(13.41f, 18.59f)
+        lineTo(7.83f, 13f)
+        lineTo(20f, 13f)
+        close()
+    }
+}.build()
+
+internal val YumerinMoreIcon: ImageVector = ImageVector.Builder(
+    name = "YumerinMoreIcon",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f
+).apply {
+    path(fill = SolidColor(Color.Black)) {
+        moveTo(7f, 12f)
+        curveTo(7f, 13.105f, 6.105f, 14f, 5f, 14f)
+        curveTo(3.895f, 14f, 3f, 13.105f, 3f, 12f)
+        curveTo(3f, 10.895f, 3.895f, 10f, 5f, 10f)
+        curveTo(6.105f, 10f, 7f, 10.895f, 7f, 12f)
+        close()
+        moveTo(14f, 12f)
+        curveTo(14f, 13.105f, 13.105f, 14f, 12f, 14f)
+        curveTo(10.895f, 14f, 10f, 13.105f, 10f, 12f)
+        curveTo(10f, 10.895f, 10.895f, 10f, 12f, 10f)
+        curveTo(13.105f, 10f, 14f, 10.895f, 14f, 12f)
+        close()
+        moveTo(21f, 12f)
+        curveTo(21f, 13.105f, 20.105f, 14f, 19f, 14f)
+        curveTo(17.895f, 14f, 17f, 13.105f, 17f, 12f)
+        curveTo(17f, 10.895f, 17.895f, 10f, 19f, 10f)
+        curveTo(20.105f, 10f, 21f, 10.895f, 21f, 12f)
+        close()
+    }
+}.build()
+
+internal val YumerinChevronRight: ImageVector = ImageVector.Builder(
+    name = "YumerinChevronRight",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f
+).apply {
+    path(fill = SolidColor(Color.Black)) {
+        moveTo(8.5f, 5.4f)
+        lineTo(15.1f, 12f)
+        lineTo(8.5f, 18.6f)
+        lineTo(7.1f, 17.2f)
+        lineTo(12.3f, 12f)
+        lineTo(7.1f, 6.8f)
+        close()
+    }
+}.build()
+
+internal val YumerinPinIcon: ImageVector = ImageVector.Builder(
+    name = "YumerinPinIcon",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f
+).apply {
+    path(fill = SolidColor(Color.Black)) {
+        moveTo(12f, 2f)
+        curveTo(8.134f, 2f, 5f, 5.134f, 5f, 9f)
+        curveTo(5f, 14.25f, 12f, 22f, 12f, 22f)
+        curveTo(12f, 22f, 19f, 14.25f, 19f, 9f)
+        curveTo(19f, 5.134f, 15.866f, 2f, 12f, 2f)
+        close()
+    }
+}.build()
+
+internal val YumerinMutedIcon: ImageVector = ImageVector.Builder(
+    name = "YumerinMutedIcon",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f
+).apply {
+    path(fill = SolidColor(Color.Black)) {
+        moveTo(3f, 9f)
+        lineTo(3f, 15f)
+        lineTo(7f, 15f)
+        lineTo(12f, 19f)
+        lineTo(12f, 5f)
+        lineTo(7f, 9f)
+        close()
+        moveTo(16f, 9f)
+        lineTo(14.6f, 10.4f)
+        lineTo(16.2f, 12f)
+        lineTo(14.6f, 13.6f)
+        lineTo(16f, 15f)
+        lineTo(17.6f, 13.4f)
+        lineTo(19.2f, 15f)
+        lineTo(20.6f, 13.6f)
+        lineTo(19f, 12f)
+        lineTo(20.6f, 10.4f)
+        lineTo(19.2f, 9f)
+        lineTo(17.6f, 10.6f)
+        close()
+    }
+}.build()
+
+internal val YumerinAddIcon: ImageVector = ImageVector.Builder(
+    name = "YumerinAddIcon",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f
+).apply {
+    path(fill = SolidColor(Color.Black)) {
+        moveTo(19f, 13f)
+        lineTo(13f, 13f)
+        lineTo(13f, 19f)
+        lineTo(11f, 19f)
+        lineTo(11f, 13f)
+        lineTo(5f, 13f)
+        lineTo(5f, 11f)
+        lineTo(11f, 11f)
+        lineTo(11f, 5f)
+        lineTo(13f, 5f)
+        lineTo(13f, 11f)
+        lineTo(19f, 11f)
+        close()
+    }
+}.build()
+
+internal val YumerinEditIcon: ImageVector = ImageVector.Builder(
+    name = "YumerinEditIcon",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f
+).apply {
+    path(fill = SolidColor(Color.Black)) {
+        moveTo(3f, 17.25f)
+        lineTo(3f, 21f)
+        lineTo(6.75f, 21f)
+        lineTo(17.81f, 9.94f)
+        lineTo(14.06f, 6.19f)
+        close()
+        moveTo(20.71f, 7.04f)
+        curveTo(21.1f, 6.65f, 21.1f, 6.02f, 20.71f, 5.63f)
+        lineTo(18.37f, 3.29f)
+        curveTo(17.98f, 2.9f, 17.35f, 2.9f, 16.96f, 3.29f)
+        lineTo(15.13f, 5.12f)
+        lineTo(18.88f, 8.87f)
+        close()
+    }
+}.build()
+
+private val YumerinSendIcon: ImageVector = ImageVector.Builder(
+    name = "YumerinSendIcon",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f
+).apply {
+    path(fill = SolidColor(Color.Black)) {
+        moveTo(3f, 4f)
+        lineTo(21f, 12f)
+        lineTo(3f, 20f)
+        lineTo(3f, 14f)
+        lineTo(15f, 12f)
+        lineTo(3f, 10f)
+        close()
+    }
+}.build()
+
+private val YumerinStopIcon: ImageVector = ImageVector.Builder(
+    name = "YumerinStopIcon",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f
+).apply {
+    path(fill = SolidColor(Color.Black)) {
+        moveTo(7f, 7f)
+        lineTo(17f, 7f)
+        lineTo(17f, 17f)
+        lineTo(7f, 17f)
+        close()
+    }
+}.build()
+
+
+@Composable
+internal fun Avatar(
+    text: String,
+    uri: String? = null,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    contentDescription: String? = null
+) {
+    Box(
+        modifier = Modifier
+            .then(modifier)
+            .size(52.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+            .then(
+                if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
+            )
+            .then(
+                if (contentDescription != null) {
+                    Modifier.semantics { this.contentDescription = contentDescription }
+                } else {
+                    Modifier
+                }
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        PlatformAvatar(uri = uri, fallback = text, modifier = Modifier.fillMaxSize())
+    }
+}
+
+@Composable
+internal fun CompositeAvatar(members: List<CharacterProfile>, fallback: String) {
+    Box(
+        modifier = Modifier
+            .size(52.dp)
+            .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        val visible = members.take(4)
+        if (visible.isEmpty()) {
+            Text(fallback.take(1), style = MaterialTheme.typography.titleLarge)
+        } else {
+            visible.forEachIndexed { index, member ->
+                val x = when (index % 2) { 0 -> (-8).dp; else -> 8.dp }
+                val y = when (index / 2) { 0 -> (-8).dp; else -> 8.dp }
+                Box(
+                    modifier = Modifier
+                        .offset(x, y)
+                        .size(26.dp)
+                        .background(MaterialTheme.colorScheme.surface, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    PlatformAvatar(member.avatarUri, member.name, Modifier.fillMaxSize())
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+internal fun SwitchRow(title: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 18.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(title)
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Composable
+internal fun SettingRow(
+    title: String,
+    value: String? = null,
+    onClick: (() -> Unit)? = null,
+    description: String? = null
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (onClick == null) Modifier else Modifier.clickable(onClick = onClick))
+            .heightIn(min = 56.dp)
+            .padding(horizontal = 18.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            description?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            value?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.widthIn(max = 132.dp)
+                )
+            }
+            if (onClick != null) {
+                Icon(
+                    imageVector = YumerinChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+    }
+}
+
+internal fun ThemeMode.label(): String = when (this) {
+    ThemeMode.LIGHT -> "浅色"
+    ThemeMode.DARK -> "深色"
+    ThemeMode.SYSTEM -> "跟随系统"
+}
+
+internal fun AgentVisibility.label(): String = when (this) {
+    AgentVisibility.FINAL_ONLY -> "只显示回复"
+    AgentVisibility.CONCISE_STATUS -> "简要状态"
+    AgentVisibility.DETAILED_STEPS -> "详细步骤"
+}
+
+internal fun MemoryCategory.label(): String = when (this) {
+    MemoryCategory.LONG_TERM -> "长期资料"
+    MemoryCategory.USER_PREFERENCE -> "用户偏好"
+    MemoryCategory.RELATIONSHIP -> "角色关系"
+    MemoryCategory.IMPORTANT_EVENT -> "重要事件"
+}
+
+internal fun nowMillis(): Long = Clock.System.now().toEpochMilliseconds()
+
+internal fun Int.pad2(): String = toString().padStart(2, '0')
+
+internal fun Int.toClockText(): String = (this.coerceIn(0, 23 * 60 + 59) / 60).pad2() + ":" + (this % 60).pad2()
+
+internal fun String.toClockMinutes(): Int? {
+    val parts = trim().split(":")
+    if (parts.size != 2) return null
+    val hour = parts[0].toIntOrNull() ?: return null
+    val minute = parts[1].toIntOrNull() ?: return null
+    return if (hour in 0..23 && minute in 0..59) hour * 60 + minute else null
+}
+
+internal fun summarizeMessages(messages: List<ChatMessage>): String = messages
+    .filter { it.text.isNotBlank() }
+    .takeLast(24)
+    .joinToString("\n") { "${it.senderName}: ${it.text}" }
+    .takeLast(4_000)

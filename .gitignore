@@ -1,0 +1,40 @@
+# Gradle, Kotlin and build output
+.gradle/
+.kotlin/
+**/build/
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# IDE and operating system files
+.idea/
+*.iml
+.DS_Store
+xcuserdata/
+
+# Local Android SDK and signing configuration
+local.properties
+signing.properties
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+google-services.json
+*service-account*.json
+
+# Local environment variables
+.env
+.env.*
+!.env.example
+
+# Packaged binaries and downloaded model weights
+*.apk
+*.aab
+*.litertlm
+*.gguf
+*.safetensors
+
+# JavaScript package installations
+node_modules/
