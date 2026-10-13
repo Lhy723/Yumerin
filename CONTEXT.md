@@ -16,6 +16,14 @@ _Avoid_: Chatbot, assistant, NPC
 The editable identity and interaction definition of a Virtual companion, including its locally stored avatar, name, relationship framing, setting, description, personality, tone, backstory, and interaction style. Relationship framing is expressed through this profile rather than a separate fixed relationship-type concept.
 _Avoid_: System prompt, configuration blob
 
+**Character runtime state**:
+The persistent emotional and relationship context of one Character, distinct from its stable profile and from inferred facts about the user. It shapes conversational tone and relationship continuity; users may inspect or adjust it in settings, while Chat shows it through interaction rather than numeric scores.
+_Avoid_: User mood record, fixed personality, model scratchpad
+
+**Transient emotional appraisal**:
+A low-confidence classification of affect expressed in the current user message. It may guide the immediate response but is not stored as a durable fact or diagnosis about the user.
+_Avoid_: Mental-health diagnosis, permanent user trait
+
 **Character archive**:
 A reversible inactive state for a Character. An archived Character remains stored with its private Chats, Group histories, and Memory entries but is excluded from ordinary selection, proactive behavior, and new interaction until restored.
 _Avoid_: Permanent deletion, hidden active companion
@@ -154,8 +162,16 @@ _Avoid_: Message suppression, service shutdown
 A user-defined time-based instruction for a Character to send a reminder, greeting, or other scheduled interaction.
 _Avoid_: Cron job, background loop
 
+**Scheduled Agent goal**:
+A user-created, one-time interaction for one Character and its Direct Chat, due between one minute and one year after creation. It produces at most one ordinary Chat message, shares the global proactive-message switch and daily limit, respects quiet-time notification rules, and can be cancelled before execution. A due goal may prepare a Pending external action, but the goal itself never authorizes it; only the user's separate approval of that exact action can do so. A stable result-message ID lets a retried Worker recover a message already written.
+_Avoid_: Unbounded autonomous task, recurring schedule, external side effect
+
+**Delegated Agent goal**:
+A user-delegated objective that a Character pursues through a persisted plan of up to six steps and reports at step milestones. Each background run handles one bounded work unit; the Agent may replace remaining steps at most twice while preserving the requested outcome and constraints. Delegation authorizes best-effort background work independently of the global Proactive-message switch. The user can pause, resume, or cancel it, and it waits for the user when it needs a decision or missing information. V1 execution is limited to available Agent capability modules; goal history stays separate from Character Memory.
+_Avoid_: One-shot reminder, unrestricted autonomy
+
 **Proactive trigger**:
-The rule or approved AI decision that causes a Character to initiate a Proactive message within the user's allowed time and frequency boundaries. Proactive messaging is disabled by default and must be enabled globally or for an individual Character before it can initiate messages. Each Character has an independent daily limit, defaulting to 3 messages; user-created schedules and AI-approved triggers share this limit.
+The rule or approved AI decision that causes a Character to initiate a Proactive message within the user's allowed time and frequency boundaries. Proactive messaging is disabled by default and must be enabled globally; recurring schedules also require per-Character opt-in, while a one-time Scheduled Agent goal is individually approved when the user creates it. Each Character has an independent daily limit, defaulting to 3 messages; schedules and goals share this limit.
 _Avoid_: Random send, autonomous spam
 
 **Cross-chat Character memory**:
@@ -223,11 +239,51 @@ The process of reducing older Chat context into a compact representation so a Ch
 _Avoid_: Memory extraction, message deletion
 
 **Agent run**:
-A single attempt by a Character to answer a user message through one or more ordered steps such as context assembly, memory retrieval, tool invocation, and final response generation.
+A bounded attempt by a Character to answer a user message or an admitted scheduled trigger through context assembly, optional capability calls, and final response generation. A run may pause for a user's approval of one external action and resume after that exact action completes; later external actions need separate approval. Runs for the same Chat are serialized across Android app and WorkManager graphs in the same process; scheduled work skips a busy Chat, while foreground user turns wait their turn. A run stops on a final response, cancellation, or its configured time, output-token, capability-call, cost, and observation limits.
 _Avoid_: One-shot completion, background loop
 
+**Agent Runtime**:
+The framework-free domain coordinator for one Agent run. It owns the model-step loop, capability allowlist, execution limits, cancellation propagation, and tool-result observations; it has no Compose, Android, ViewModel, or navigation dependency.
+_Avoid_: UI controller, provider client, background service
+
+**Agent capability module**:
+A separately registered ability that declares its inputs and effects and can be discovered and invoked by the Agent through a stable extension contract. V1 includes built-in modules; third-party installation and sharing are deferred.
+_Avoid_: UI action, provider plugin, arbitrary function call
+
+**External service connection**:
+A user's authorization for Yumerin to access one account at one external service with that service's read and write permissions. Before system authorization, Yumerin explains the requested permissions, their purposes, and which Agent capabilities are available or blocked for that connection. A newly added external capability is not enabled silently; the user reviews and enables it even if the existing connection scopes already cover it.
+_Avoid_: Global account link, blanket Agent permission
+
+**External-data sharing consent**:
+A separate, revocable app-wide consent, requested before first use, that allows only the minimum relevant data retrieved from connected services to be included in requests to any current or future remote model endpoint. Revoking it blocks future sharing and cancels in-progress runs that depend on the data; already prepared Pending external actions remain separately reviewable. It does not grant access to an external service or approve an external write; it does not gate local inference that keeps the data on device.
+_Avoid_: Service connection, per-request prompt
+
+**External service data**:
+Information read from a connected service for the current Agent run. It remains Short-term context, is not automatically saved as Character memory, and is treated as untrusted data rather than as instructions to the Agent.
+_Avoid_: Durable memory, model training data
+
+**Approved external action scope**:
+The set of boundaries a user sees and approves for one external write: service account, action type, target or audience, content and any permitted variations, allowed timing, and impact or quantity limits. Communication previews show the full content and audience. Only fields explicitly marked as flexible may change, and only within their displayed bounds; all other values stay fixed. A retry is allowed within the same scope only after the service confirms that the prior attempt did not execute.
+_Avoid_: Blanket write permission, open-ended goal
+
+**External action approval**:
+The user's explicit approval of one external write after reviewing its Approved external action scope. Changes inside explicitly flexible bounds and a retry after the service confirms non-execution do not need a new approval; changes outside the scope do. Permanent deletion, payments or transfers, and account-security changes are unavailable. All other writes, including one-to-one, bulk, and public communication, require per-action approval. Communication previews show the sending account, full content, and audience. If the user declines an interactive action, the current Agent run receives that result and may answer safely but cannot repeat the same action. If the service cannot establish whether a write succeeded, the outcome remains uncertain and the action is not retried.
+_Avoid_: Persistent write permission, blanket consent
+
+**Pending external action**:
+An external write requested by an Agent run that has not yet been approved. A background request is saved for review in Yumerin and does not execute until the user opens it and approves its displayed scope; its notification follows quiet-time and notification-permission rules, and it remains visible in Yumerin if a notification cannot be delivered. Approval executes within that scope and returns the result to the same Agent run; later writes need their own approval. It expires 24 hours after creation; rejection or expiry cancels both the action and its linked Goal.
+_Avoid_: Queued external send, pre-approved action
+
+**Uncertain external action outcome**:
+A service response that does not establish whether an approved write succeeded. The Agent queries the service when it supports a reliable status check. It retries only after the service confirms that the action did not execute and the retry remains inside the Approved external action scope; otherwise it leaves the result unknown for the user to resolve.
+_Avoid_: Safe-to-repeat failure, silent retry
+
+**Capability registry**:
+The per-runtime allowlist of capability modules available for a request. Only read-only capabilities with no outstanding permission or confirmation requirement are currently exposed to the model.
+_Avoid_: Global service locator, model-selected code
+
 **Tool invocation**:
-A deliberate step within an Agent run that requests a capability before the final response is produced. V1 automatically supports only local context compression and Character Memory retrieval; external capabilities such as web search remain interface placeholders and are not executed.
+A structured request from the model adapter to run one named, registered Agent capability. The domain runtime validates the request, enforces the run limit, executes the module, and returns a bounded observation. V1 includes a calculator, Character-scoped memory recall, and read-only schedule lookup; network access and external side effects remain unavailable.
 _Avoid_: Model hallucination, hidden side effect
 
 **Agent visibility mode**:
@@ -241,7 +297,7 @@ _Avoid_: Model mode, chat type
 ## Model interaction
 
 **Model provider**:
-A remote service or local runtime that exposes one or more AI models available to Yumerin. V1 supports OpenAI-compatible remote providers and a LiteRT-LM-based Android local provider behind the same model-selection boundary.
+A remote service or local runtime that exposes one or more AI models available to Yumerin. V1 supports OpenAI-compatible remote providers and a LiteRT-LM-based Android local provider behind the same model-selection boundary. Both can use the same bounded domain capability loop; the local adapter uses a JSON action protocol.
 _Avoid_: Character, model name
 
 **Model profile**:

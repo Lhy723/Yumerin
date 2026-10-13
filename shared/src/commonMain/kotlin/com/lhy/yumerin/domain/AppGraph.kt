@@ -9,6 +9,11 @@ import com.lhy.yumerin.domain.repository.MemoryRepository
 import com.lhy.yumerin.domain.repository.ModelProfileRepository
 import com.lhy.yumerin.domain.repository.SettingsRepository
 import com.lhy.yumerin.domain.repository.CompanionScheduleRepository
+import com.lhy.yumerin.domain.repository.CharacterRuntimeStateRepository
+import com.lhy.yumerin.domain.repository.AgentGoalRepository
+import com.lhy.yumerin.domain.repository.DelegatedAgentGoalRepository
+import com.lhy.yumerin.domain.background.AgentGoalScheduler
+import com.lhy.yumerin.domain.background.DelegatedAgentGoalScheduler
 import com.lhy.yumerin.domain.repository.GroupMembershipRepository
 import com.lhy.yumerin.domain.repository.LocalModelGateway
 import com.lhy.yumerin.domain.repository.PortableDataManager
@@ -28,6 +33,11 @@ interface AppGraph {
     val settings: SettingsRepository
     val groupMemberships: GroupMembershipRepository
     val schedules: CompanionScheduleRepository
+    val characterRuntimeStates: CharacterRuntimeStateRepository
+    val agentGoals: AgentGoalRepository
+    val agentGoalScheduler: AgentGoalScheduler
+    val delegatedAgentGoals: DelegatedAgentGoalRepository
+    val delegatedAgentGoalScheduler: DelegatedAgentGoalScheduler
     val localModelGateway: LocalModelGateway
     val portableData: PortableDataManager
     val credentials: CredentialStore

@@ -12,6 +12,14 @@ enum class ThemeMode {
     SYSTEM
 }
 
+enum class ThemeColor {
+    BLUE,
+    PURPLE,
+    GREEN,
+    ROSE,
+    ORANGE
+}
+
 enum class ChatKind {
     DIRECT,
     GROUP
@@ -57,6 +65,30 @@ enum class MemoryReviewState {
     PENDING_REVIEW,
     REJECTED,
     SUPERSEDED
+}
+
+enum class AgentGoalStatus {
+    PENDING,
+    COMPLETED,
+    CANCELLED,
+    FAILED
+}
+
+enum class DelegatedAgentGoalStatus {
+    QUEUED,
+    RUNNING,
+    PAUSED,
+    WAITING_FOR_USER,
+    COMPLETED,
+    CANCELLED,
+    FAILED
+}
+
+enum class DelegatedAgentGoalStepStatus {
+    PENDING,
+    RUNNING,
+    COMPLETED,
+    FAILED
 }
 
 enum class ModelProviderKind {
@@ -250,7 +282,8 @@ data class AppSettings(
     val defaultModelProfileId: EntityId? = null,
     val reducedMotionEnabled: Boolean = false,
     val userName: String = "Yumerin User",
-    val userAvatarUri: String? = null
+    val userAvatarUri: String? = null,
+    val themeColor: ThemeColor = ThemeColor.BLUE
 )
 
 data class GroupMembershipWindow(
@@ -278,4 +311,63 @@ data class CompanionSchedule(
     val createdAt: Long,
     val updatedAt: Long,
     val deletedAt: Long? = null
+)
+
+/** Durable, character-scoped interaction state; user affect itself is never stored here. */
+data class CharacterRuntimeState(
+    val characterId: EntityId,
+    val moodValence: Float = 0f,
+    val moodArousal: Float = 0.25f,
+    val trust: Float = 0.5f,
+    val closeness: Float = 0.5f,
+    val completedInteractions: Int = 0,
+    val lastInteractionAt: Long? = null,
+    val sourceChatId: EntityId? = null,
+    val sourceMessageId: EntityId? = null,
+    val updatedAt: Long = 0L
+)
+
+data class ScheduledAgentGoal(
+    val id: EntityId,
+    val characterId: EntityId,
+    val chatId: EntityId,
+    val title: String,
+    val prompt: String,
+    val dueAt: Long,
+    val status: AgentGoalStatus = AgentGoalStatus.PENDING,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val completedAt: Long? = null,
+    val resultMessageId: EntityId? = null,
+    val failureReason: String? = null
+)
+
+/** A durable, multi-step task explicitly delegated by the user to the companion Agent. */
+data class DelegatedAgentGoal(
+    val id: EntityId,
+    val characterId: EntityId,
+    val chatId: EntityId,
+    val title: String,
+    val outcome: String,
+    val constraints: String = "",
+    val replanCount: Int = 0,
+    val status: DelegatedAgentGoalStatus = DelegatedAgentGoalStatus.QUEUED,
+    val steps: List<DelegatedAgentGoalStep> = emptyList(),
+    val latestSummary: String? = null,
+    val pendingQuestion: String? = null,
+    val resumeInput: String? = null,
+    val failureReason: String? = null,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val completedAt: Long? = null
+)
+
+data class DelegatedAgentGoalStep(
+    val id: EntityId,
+    val goalId: EntityId,
+    val order: Int,
+    val title: String,
+    val status: DelegatedAgentGoalStepStatus = DelegatedAgentGoalStepStatus.PENDING,
+    val summary: String? = null,
+    val attempts: Int = 0
 )

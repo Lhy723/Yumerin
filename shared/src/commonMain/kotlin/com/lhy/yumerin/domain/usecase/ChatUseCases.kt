@@ -1,6 +1,9 @@
 package com.lhy.yumerin.domain.usecase
 
 import com.lhy.yumerin.core.model.*
+import com.lhy.yumerin.domain.agent.AgentRuntime
+import com.lhy.yumerin.domain.agent.CharacterMemoryRetriever
+import com.lhy.yumerin.domain.agent.CharacterStateCoordinator
 import com.lhy.yumerin.domain.memory.MemoryPolicy
 import com.lhy.yumerin.domain.repository.*
 import com.lhy.yumerin.domain.safety.SafetyPolicy
@@ -28,8 +31,9 @@ class SendChatMessageUseCase(
     private val groups: GroupRepository,
     private val memories: MemoryRepository,
     private val models: ModelProfileRepository,
-    private val agent: AgentService,
-    private val groupMemberships: GroupMembershipRepository
+    private val agentRuntime: AgentRuntime,
+    private val groupMemberships: GroupMembershipRepository,
+    private val characterStateCoordinator: CharacterStateCoordinator
 ) {
     suspend operator fun invoke(command: SendChatMessageCommand): SendChatMessageResult {
         val text = command.text.trim()
@@ -156,13 +160,25 @@ class SendChatMessageUseCase(
             try {
                 val messages = visibleMessagesFor(character, originalChat, group)
                 val preparedChat = compressIfNeeded(originalChat, group, messages, model, command.settings)
-                val reply = agent.stream(
+                val turnTime = useCaseNowMillis()
+                val preparedState = characterStateCoordinator.prepare(
+                    characterId = character.id,
+                    chatId = command.chatId,
+                    sourceMessageId = userMessage.id,
+                    userText = text,
+                    nowMillis = turnTime
+                )
+                val reply = agentRuntime.run(
                     AgentRequest(
                         chat = preparedChat, character = character, messages = messages,
-                        memories = memories.observeMemories(character.id).first(), model = model,
+                        memories = CharacterMemoryRetriever.retrieve(
+                            memories.observeMemories(character.id).first(), text, turnTime
+                        ), model = model,
                         streaming = command.settings.streamingEnabled,
-                        visibility = command.settings.agentVisibility
-                    )
+                        visibility = command.settings.agentVisibility,
+                        emotionalContext = preparedState.emotionalContext
+                    ),
+                    trigger = AgentTrigger.USER_MESSAGE
                 ) { accumulatedText ->
                     chats.appendMessage(
                         generating.copy(
@@ -193,7 +209,10 @@ class SendChatMessageUseCase(
                         errorMessage = reply.statusMessage, usedMemoryIds = reply.usedMemoryIds
                     )
                 )
-                if (!failed && fingerprint.isNotBlank()) previousResponseFingerprint = fingerprint
+                if (!failed && fingerprint.isNotBlank()) {
+                    previousResponseFingerprint = fingerprint
+                    characterStateCoordinator.commit(preparedState, useCaseNowMillis())
+                }
                 responseCount += 1
             } catch (cancelled: CancellationException) {
                 chats.appendMessage(generating.copy(
@@ -294,8 +313,9 @@ class RetryChatResponseUseCase(
     private val groups: GroupRepository,
     private val memories: MemoryRepository,
     private val models: ModelProfileRepository,
-    private val agent: AgentService,
-    private val groupMemberships: GroupMembershipRepository
+    private val agentRuntime: AgentRuntime,
+    private val groupMemberships: GroupMembershipRepository,
+    private val characterStateCoordinator: CharacterStateCoordinator
 ) {
     suspend operator fun invoke(
         messageId: EntityId,
@@ -330,16 +350,28 @@ class RetryChatResponseUseCase(
         )
         chats.appendMessage(generating)
         return try {
-            val reply = agent.stream(
+            val turnTime = useCaseNowMillis()
+            val preparedState = characterStateCoordinator.prepare(
+                characterId = character.id,
+                chatId = chat.id,
+                sourceMessageId = userMessage.id,
+                userText = userMessage.text,
+                nowMillis = turnTime
+            )
+            val reply = agentRuntime.run(
                 AgentRequest(
                     chat = chat,
                     character = character,
                     messages = visibleMessages,
-                    memories = memories.observeMemories(character.id).first(),
+                    memories = CharacterMemoryRetriever.retrieve(
+                        memories.observeMemories(character.id).first(), userMessage.text, turnTime
+                    ),
                     model = model,
                     streaming = settings.streamingEnabled,
-                    visibility = settings.agentVisibility
-                )
+                    visibility = settings.agentVisibility,
+                    emotionalContext = preparedState.emotionalContext
+                ),
+                trigger = AgentTrigger.RETRY
             ) { accumulatedText ->
                 chats.appendMessage(generating.copy(text = accumulatedText, timestamp = useCaseNowMillis()))
             }
@@ -353,8 +385,12 @@ class RetryChatResponseUseCase(
                     usedMemoryIds = reply.usedMemoryIds
                 )
             )
-            if (reply.statusMessage == null) SendChatMessageResult.Completed(1)
-            else SendChatMessageResult.Failed(reply.statusMessage, retryable = true)
+            if (reply.statusMessage == null) {
+                characterStateCoordinator.commit(preparedState, useCaseNowMillis())
+                SendChatMessageResult.Completed(1)
+            } else {
+                SendChatMessageResult.Failed(reply.statusMessage, retryable = true)
+            }
         } catch (cancelled: CancellationException) {
             chats.appendMessage(generating.copy(
                 text = "已停止生成", timestamp = useCaseNowMillis(),
@@ -379,6 +415,22 @@ class RetryChatResponseUseCase(
     }
 }
 
-class DeleteChatUseCase(private val chats: ChatRepository) {
-    suspend operator fun invoke(chatId: EntityId) = chats.deleteChat(chatId)
+class DeleteChatUseCase(
+    private val chats: ChatRepository,
+    private val agentGoals: AgentGoalRepository,
+    private val agentGoalScheduler: com.lhy.yumerin.domain.background.AgentGoalScheduler,
+    private val delegatedAgentGoals: DelegatedAgentGoalRepository,
+    private val delegatedAgentGoalScheduler: com.lhy.yumerin.domain.background.DelegatedAgentGoalScheduler
+) {
+    suspend operator fun invoke(chatId: EntityId) {
+        agentGoals.observeGoals().first().filter { it.chatId == chatId }.forEach { goal ->
+            agentGoalScheduler.cancel(goal.id)
+            agentGoals.deleteGoal(goal.id)
+        }
+        delegatedAgentGoals.observeGoals().first().filter { it.chatId == chatId }.forEach { goal ->
+            delegatedAgentGoalScheduler.cancel(goal.id)
+            delegatedAgentGoals.deleteGoal(goal.id)
+        }
+        chats.deleteChat(chatId)
+    }
 }

@@ -5,32 +5,29 @@ import com.lhy.yumerin.core.model.AgentVisibility
 import com.lhy.yumerin.core.model.EntityId
 import com.lhy.yumerin.core.model.MemoryEntry
 import com.lhy.yumerin.core.model.MemoryReviewState
-
-data class AgentPromptMessage(
-    val role: String,
-    val content: String
-)
+import com.lhy.yumerin.core.model.AgentConversationMessage
+import kotlin.time.Clock
 
 /**
  * Builds a bounded prompt from short-term chat state and isolated character memory.
  * The 80% threshold leaves room for the model's answer and future tool results.
  */
 object ContextAssembler {
-    fun assemble(request: AgentRequest): List<AgentPromptMessage> {
+    fun assemble(request: AgentRequest): List<AgentConversationMessage> {
         val contextWindow = request.model.contextLength ?: 8_192
         val system = assembleSystem(request)
         val budgetChars = (contextWindow * 4 * 0.8f).toInt().coerceAtLeast(2_000)
         val selectedMemories = selectMemories(request, budgetChars, system.length)
-        val messages = mutableListOf(AgentPromptMessage("system", system))
+        val messages = mutableListOf(AgentConversationMessage("system", system))
         val memoryText = selectedMemories.joinToString("\n") { "- ${it.content}" }
         if (memoryText.isNotBlank()) {
-            messages += AgentPromptMessage("system", "Relevant character memory:\n$memoryText")
+            messages += AgentConversationMessage("system", "Relevant character memory:\n$memoryText")
         }
 
         var usedChars = messages.sumOf { it.content.length }
         request.messages.asReversed().forEach { message ->
             val role = if (message.senderType == com.lhy.yumerin.core.model.MessageSenderType.USER) "user" else "assistant"
-            val candidate = AgentPromptMessage(role, message.text)
+            val candidate = AgentConversationMessage(role, message.text)
             if (usedChars + candidate.content.length <= budgetChars) {
                 messages.add(2.coerceAtMost(messages.size), candidate)
                 usedChars += candidate.content.length
@@ -49,9 +46,12 @@ object ContextAssembler {
     private fun selectMemories(request: AgentRequest, budgetChars: Int, systemLength: Int): List<MemoryEntry> {
         var used = systemLength
         val result = mutableListOf<MemoryEntry>()
+        val nowMillis = Clock.System.now().toEpochMilliseconds()
         request.memories
-            .filter { it.reviewState == MemoryReviewState.ACCEPTED }
-            .sortedWith(compareByDescending<MemoryEntry> { it.pinned }.thenByDescending { it.confidence })
+            .filter {
+                it.reviewState == MemoryReviewState.ACCEPTED && it.deletedAt == null &&
+                    (it.expiresAt == null || it.expiresAt > nowMillis)
+            }
             .take(24)
             .forEach { memory ->
                 val lineLength = memory.content.length + 3
@@ -73,9 +73,20 @@ object ContextAssembler {
             append("Interaction style: ${it.interactionStyle}. ")
         }
         if (request.chat.shortTermSummary.isNotBlank()) append("Recent chat summary: ${request.chat.shortTermSummary}. ")
+        request.emotionalContext?.let { context ->
+            append("Character's current emotional tone: ${context.characterMood}. ")
+            append("Relationship continuity: ${context.relationshipContinuity}. ")
+            append("Current-message affect signal (temporary, uncertain context): ${context.userAffect}. ")
+            append("Response guidance: ${context.responseGuidance} ")
+            append("Keep the character's established personality and boundaries stable; do not present a transient affect signal as a diagnosis or permanent fact about the user. ")
+        }
         request.proactivePrompt?.let {
             append("You are initiating an ordinary chat message. Use the following user-approved schedule intent: $it. ")
             append("Do not mention hidden instructions, tools, or internal reasoning. ")
+        }
+        request.goalContext?.let {
+            append("The user explicitly delegated a bounded task. Follow its outcome and constraints, report only meaningful progress, and ask the user when required information is missing. Task context: $it. ")
+            append("When task context specifies a status line, include that required runtime control line at the start; the app removes it before showing the user. Do not expose hidden reasoning. Do not claim completion unless the requested outcome is complete. ")
         }
         when (request.visibility) {
             AgentVisibility.FINAL_ONLY -> append("Return only the final conversational answer; never expose chain-of-thought or hidden tool details. ")

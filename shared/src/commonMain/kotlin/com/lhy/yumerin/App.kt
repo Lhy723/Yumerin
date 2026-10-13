@@ -53,6 +53,8 @@ private sealed interface AppDestination {
     ) : AppDestination
     data class GROUP_EDITOR(val groupId: EntityId? = null) : AppDestination
     data object SETTINGS : AppDestination
+    data object CHARACTER_CONTINUITY_LIST : AppDestination
+    data class CHARACTER_CONTINUITY(val characterId: EntityId) : AppDestination
     data object MODELS : AppDestination
     data object ABOUT : AppDestination
     data object SCHEDULES : AppDestination
@@ -84,6 +86,8 @@ private fun AppDestination.rank(): Int = when (this) {
     is AppDestination.MEMORIES -> 7
     is AppDestination.GROUP_EDITOR -> 8
     AppDestination.SETTINGS -> 9
+    AppDestination.CHARACTER_CONTINUITY_LIST -> 14
+    is AppDestination.CHARACTER_CONTINUITY -> 15
     AppDestination.MODELS -> 10
     AppDestination.ABOUT -> 11
     AppDestination.SCHEDULES -> 12
@@ -242,6 +246,8 @@ private fun AppContent(
                 is AppDestination.GROUP_EDITOR -> AppDestination.CHAT_LIST
                 is AppDestination.USER_PROFILE -> current.returnTo
                 AppDestination.SETTINGS -> AppDestination.PROFILE
+                AppDestination.CHARACTER_CONTINUITY_LIST -> AppDestination.SETTINGS
+                is AppDestination.CHARACTER_CONTINUITY -> AppDestination.CHARACTER_CONTINUITY_LIST
                 AppDestination.MODELS -> AppDestination.SETTINGS
                 AppDestination.ABOUT -> AppDestination.PROFILE
                 AppDestination.SCHEDULES -> AppDestination.SETTINGS
@@ -497,8 +503,32 @@ private fun AppContent(
                                 onOpenModels = { destination = AppDestination.MODELS },
                                 onOpenSchedules = { destination = AppDestination.SCHEDULES },
                                 onOpenDataManagement = { destination = AppDestination.DATA_MANAGEMENT },
+                                onOpenCharacterContinuity = { destination = AppDestination.CHARACTER_CONTINUITY_LIST },
                                 onBack = { destination = AppDestination.PROFILE }
                             )
+                            AppDestination.CHARACTER_CONTINUITY_LIST -> CharacterContinuityListPage(
+                                characters = characters,
+                                onOpenCharacter = { id -> destination = AppDestination.CHARACTER_CONTINUITY(id) },
+                                onBack = { destination = AppDestination.SETTINGS }
+                            )
+                            is AppDestination.CHARACTER_CONTINUITY -> {
+                                val character = allCharacters.firstOrNull { it.id == screen.characterId }
+                                if (character == null) {
+                                    destination = AppDestination.CHARACTER_CONTINUITY_LIST
+                                } else {
+                                    val state by useCases.observeCharacterRuntimeState(screen.characterId).collectAsState(null)
+                                    CharacterContinuityPage(
+                                        character = character,
+                                        state = state,
+                                        onSave = { mood, trust, closeness ->
+                                            scope.launch {
+                                                useCases.updateCharacterContinuity(screen.characterId, mood, trust, closeness)
+                                            }
+                                        },
+                                        onBack = { destination = AppDestination.CHARACTER_CONTINUITY_LIST }
+                                    )
+                                }
+                            }
                             AppDestination.MODELS -> ModelsPage(
                                 backdrop = backdrop,
                                 graph = graph,
@@ -515,7 +545,6 @@ private fun AppContent(
                                 onBack = { destination = AppDestination.PROFILE }
                             )
                             AppDestination.SCHEDULES -> SchedulesPage(
-                                backdrop = backdrop,
                                 graph = graph,
                                 characters = characters,
                                 chats = chats,

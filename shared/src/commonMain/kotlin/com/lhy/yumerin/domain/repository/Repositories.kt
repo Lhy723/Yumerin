@@ -5,6 +5,9 @@ import com.lhy.yumerin.core.model.CharacterProfile
 import com.lhy.yumerin.core.model.ChatMessage
 import com.lhy.yumerin.core.model.ChatThread
 import com.lhy.yumerin.core.model.CompanionSchedule
+import com.lhy.yumerin.core.model.CharacterRuntimeState
+import com.lhy.yumerin.core.model.ScheduledAgentGoal
+import com.lhy.yumerin.core.model.DelegatedAgentGoal
 import com.lhy.yumerin.core.model.EntityId
 import com.lhy.yumerin.core.model.GroupProfile
 import com.lhy.yumerin.core.model.GroupMembershipWindow
@@ -85,6 +88,27 @@ interface CompanionScheduleRepository {
     suspend fun deleteSchedule(id: EntityId)
 }
 
+interface CharacterRuntimeStateRepository {
+    fun observeState(characterId: EntityId): Flow<CharacterRuntimeState?>
+    suspend fun getState(characterId: EntityId): CharacterRuntimeState?
+    suspend fun saveState(state: CharacterRuntimeState)
+    suspend fun deleteState(characterId: EntityId)
+}
+
+interface AgentGoalRepository {
+    fun observeGoals(): Flow<List<ScheduledAgentGoal>>
+    suspend fun getGoal(id: EntityId): ScheduledAgentGoal?
+    suspend fun saveGoal(goal: ScheduledAgentGoal)
+    suspend fun deleteGoal(id: EntityId)
+}
+
+interface DelegatedAgentGoalRepository {
+    fun observeGoals(): Flow<List<DelegatedAgentGoal>>
+    suspend fun getGoal(id: EntityId): DelegatedAgentGoal?
+    suspend fun saveGoal(goal: DelegatedAgentGoal)
+    suspend fun deleteGoal(id: EntityId)
+}
+
 /** Platform boundary for catalog/import/download/activation work; no Android types cross it. */
 interface LocalModelGateway {
     suspend fun registerCatalogEntry(artifact: LocalModelArtifact)
@@ -106,10 +130,13 @@ data class PortableDataCounts(
     val localArtifacts: Int = 0,
     val settings: Int = 0,
     val membershipWindows: Int = 0,
-    val schedules: Int = 0
+    val schedules: Int = 0,
+    val characterRuntimeStates: Int = 0,
+    val agentGoals: Int = 0,
+    val delegatedAgentGoals: Int = 0
 ) {
     val total: Int
-        get() = characters + chats + messages + groups + memories + models + localArtifacts + settings + membershipWindows + schedules
+        get() = characters + chats + messages + groups + memories + models + localArtifacts + settings + membershipWindows + schedules + characterRuntimeStates + agentGoals + delegatedAgentGoals
 }
 
 data class ImportPreview(

@@ -43,6 +43,7 @@ internal fun SettingsPage(
     onOpenModels: () -> Unit,
     onOpenSchedules: () -> Unit,
     onOpenDataManagement: () -> Unit,
+    onOpenCharacterContinuity: () -> Unit,
     onBack: () -> Unit
 ) {
     var quietStartText by remember(settings.quietStartMinutes) { mutableStateOf(settings.quietStartMinutes.toClockText()) }
@@ -209,6 +210,12 @@ internal fun SettingsPage(
                     .fillMaxWidth()
                     .padding(horizontal = 6.dp)
             ) { Text("管理主动消息计划") }
+            TextButton(
+                onClick = onOpenCharacterContinuity,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 6.dp)
+            ) { Text("查看角色连续性") }
         }
 
         SettingsSection(

@@ -6,19 +6,27 @@ import com.lhy.yumerin.data.room.CharacterEntity
 import com.lhy.yumerin.data.room.ChatMessageEntity
 import com.lhy.yumerin.data.room.ChatThreadEntity
 import com.lhy.yumerin.data.room.CompanionScheduleEntity
+import com.lhy.yumerin.data.room.CharacterRuntimeStateEntity
+import com.lhy.yumerin.data.room.ScheduledAgentGoalEntity
+import com.lhy.yumerin.data.room.DelegatedAgentGoalEntity
+import com.lhy.yumerin.data.room.DelegatedAgentGoalStepEntity
 import com.lhy.yumerin.data.room.GroupEntity
 import com.lhy.yumerin.data.room.GroupMembershipWindowEntity
 import com.lhy.yumerin.data.room.MemoryEntryEntity
 import com.lhy.yumerin.data.room.ModelProfileEntity
 import com.lhy.yumerin.data.room.LocalModelArtifactEntity
 import com.lhy.yumerin.data.room.YumerinDatabase
+import com.lhy.yumerin.data.room.toDomain
 import com.lhy.yumerin.domain.background.BackgroundCompanionController
+import com.lhy.yumerin.domain.background.AgentGoalScheduler
+import com.lhy.yumerin.domain.background.DelegatedAgentGoalScheduler
 import com.lhy.yumerin.domain.repository.CredentialStore
 import com.lhy.yumerin.domain.repository.ImportConflictPolicy
 import com.lhy.yumerin.domain.repository.ImportPreview
 import com.lhy.yumerin.domain.repository.ImportResult
 import com.lhy.yumerin.domain.repository.PortableDataManager
 import com.lhy.yumerin.domain.repository.PortableDataCounts
+import kotlinx.coroutines.CancellationException
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -28,7 +36,9 @@ class RoomPortableDataManager(
     private val database: YumerinDatabase,
     private val credentials: CredentialStore,
     private val backgroundCompanion: BackgroundCompanionController,
-    private val modelsDirectory: File
+    private val modelsDirectory: File,
+    private val agentGoalScheduler: AgentGoalScheduler,
+    private val delegatedAgentGoalScheduler: DelegatedAgentGoalScheduler
 ) : PortableDataManager {
     override suspend fun exportData(): String {
         val root = JSONObject()
@@ -45,6 +55,12 @@ class RoomPortableDataManager(
         root.put("settings", JSONArray(database.settingsDao().getAll().map(::settingsJson)))
         root.put("membershipWindows", JSONArray(database.groupMembershipWindowDao().getAll().map(::membershipJson)))
         root.put("schedules", JSONArray(database.companionScheduleDao().getAll().map(::scheduleJson)))
+        root.put("characterRuntimeStates", JSONArray(database.characterRuntimeStateDao().getAll().map(::characterRuntimeStateJson)))
+        root.put("agentGoals", JSONArray(database.scheduledAgentGoalDao().getAll().map(::agentGoalJson)))
+        val delegatedSteps = database.delegatedAgentGoalStepDao().getAll().groupBy { it.goalId }
+        root.put("delegatedAgentGoals", JSONArray(database.delegatedAgentGoalDao().getAll().map { goal ->
+            delegatedAgentGoalJson(goal, delegatedSteps[goal.id].orEmpty())
+        }))
         return root.toString(2)
     }
 
@@ -121,17 +137,59 @@ class RoomPortableDataManager(
                     val entity = parseSchedule(it)
                     if (shouldImport(entity.id, existing.schedules, conflictPolicy)) database.companionScheduleDao().upsert(entity) else skipped++
                 }
+                root.array("characterRuntimeStates").forEach {
+                    val entity = parseCharacterRuntimeState(it)
+                    if (shouldImport(entity.characterId, existing.characterRuntimeStates, conflictPolicy)) {
+                        database.characterRuntimeStateDao().upsert(entity)
+                    } else skipped++
+                }
+                root.array("agentGoals").forEach {
+                    val entity = parseAgentGoal(it)
+                    if (shouldImport(entity.id, existing.agentGoals, conflictPolicy)) {
+                        database.scheduledAgentGoalDao().upsert(entity)
+                    } else skipped++
+                }
+                root.array("delegatedAgentGoals").forEach {
+                    val parsed = parseDelegatedAgentGoal(it)
+                    if (shouldImport(parsed.goal.id, existing.delegatedAgentGoals, conflictPolicy)) {
+                        database.delegatedAgentGoalDao().upsert(parsed.goal)
+                        database.delegatedAgentGoalStepDao().deleteForGoal(parsed.goal.id)
+                        parsed.steps.forEach { step -> database.delegatedAgentGoalStepDao().upsert(step) }
+                    } else skipped++
+                }
+            }
+            val proactiveEnabled = database.settingsDao().observeGlobalOnce()?.toDomain()?.proactiveMessagesEnabled == true
+            val goalsRescheduled = try {
+                agentGoalScheduler.setEnabled(proactiveEnabled)
+                true
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                false
+            }
+            val delegatedGoalsRescheduled = try {
+                delegatedAgentGoalScheduler.reconcile()
+                true
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                false
+            }
+            val baseMessage = if (skipped == 0) {
+                "数据已合并；API Key 和模型文件未导入，请在本机重新配置。"
+            } else {
+                "数据已合并，$skipped 条冲突记录已保留本机版本；API Key 和模型文件未导入。"
             }
             ImportResult(
                 imported = true,
-                message = if (skipped == 0) {
-                    "数据已合并；API Key 和模型文件未导入，请在本机重新配置。"
-                } else {
-                    "数据已合并，$skipped 条冲突记录已保留本机版本；API Key 和模型文件未导入。"
-                },
+                message = baseMessage + (if (goalsRescheduled) "" else " 一次性目标将在下次启动时重试调度。") +
+                    (if (delegatedGoalsRescheduled) "" else " 委托目标将在下次启动时重试调度。"),
                 skippedConflicts = skipped
             )
-        }.getOrElse { ImportResult(false, it.message ?: "数据包导入失败") }
+        }.getOrElse {
+            if (it is CancellationException) throw it
+            ImportResult(false, it.message ?: "数据包导入失败")
+        }
     }
 
     private data class ExistingIds(
@@ -144,7 +202,10 @@ class RoomPortableDataManager(
         val localArtifacts: Set<String>,
         val settings: Set<String>,
         val membershipWindows: Set<String>,
-        val schedules: Set<String>
+        val schedules: Set<String>,
+        val characterRuntimeStates: Set<String>,
+        val agentGoals: Set<String>,
+        val delegatedAgentGoals: Set<String>
     )
 
     private suspend fun existingIds() = ExistingIds(
@@ -157,7 +218,10 @@ class RoomPortableDataManager(
         localArtifacts = database.modelProfileDao().getArtifacts().map { it.id }.toSet(),
         settings = database.settingsDao().getAll().map { it.id }.toSet(),
         membershipWindows = database.groupMembershipWindowDao().getAll().map { it.id }.toSet(),
-        schedules = database.companionScheduleDao().getAll().map { it.id }.toSet()
+        schedules = database.companionScheduleDao().getAll().map { it.id }.toSet(),
+        characterRuntimeStates = database.characterRuntimeStateDao().getAll().map { it.characterId }.toSet(),
+        agentGoals = database.scheduledAgentGoalDao().getAll().map { it.id }.toSet(),
+        delegatedAgentGoals = database.delegatedAgentGoalDao().getAll().map { it.id }.toSet()
     )
 
     private fun shouldImport(id: String, existing: Set<String>, policy: ImportConflictPolicy): Boolean =
@@ -173,10 +237,15 @@ class RoomPortableDataManager(
             root.array("localArtifacts").count { it.str("id") in existing.localArtifacts } +
             root.array("settings").count { it.str("id") in existing.settings } +
             root.array("membershipWindows").count { it.str("id") in existing.membershipWindows } +
-            root.array("schedules").count { it.str("id") in existing.schedules }
+            root.array("schedules").count { it.str("id") in existing.schedules } +
+            root.array("characterRuntimeStates").count { it.str("characterId") in existing.characterRuntimeStates } +
+            root.array("agentGoals").count { it.str("id") in existing.agentGoals } +
+            root.array("delegatedAgentGoals").count { it.str("id") in existing.delegatedAgentGoals }
 
     override suspend fun wipeAll() {
         backgroundCompanion.stopAll()
+        agentGoalScheduler.setEnabled(false)
+        delegatedAgentGoalScheduler.cancelAll()
         credentials.clear()
         database.withTransaction {
             database.characterDao().deleteAll()
@@ -189,6 +258,10 @@ class RoomPortableDataManager(
             database.settingsDao().deleteAll()
             database.groupMembershipWindowDao().deleteAll()
             database.companionScheduleDao().deleteAll()
+            database.characterRuntimeStateDao().deleteAll()
+            database.scheduledAgentGoalDao().deleteAll()
+            database.delegatedAgentGoalStepDao().deleteAll()
+            database.delegatedAgentGoalDao().deleteAll()
         }
         modelsDirectory.deleteRecursively()
         modelsDirectory.parentFile?.resolve("avatars")?.deleteRecursively()
@@ -268,7 +341,7 @@ class RoomPortableDataManager(
         .put("quietTimeEnabled", value.quietTimeEnabled).put("quietStartMinutes", value.quietStartMinutes)
         .put("quietEndMinutes", value.quietEndMinutes).put("contextCompressionThreshold", value.contextCompressionThreshold)
         .putNullable("defaultModelProfileId", value.defaultModelProfileId).put("reducedMotionEnabled", value.reducedMotionEnabled)
-        .put("userName", value.userName)
+        .put("userName", value.userName).put("themeColor", value.themeColor)
 
     private fun membershipJson(value: GroupMembershipWindowEntity) = JSONObject()
         .put("id", value.id).put("groupId", value.groupId).put("characterId", value.characterId)
@@ -281,6 +354,32 @@ class RoomPortableDataManager(
         .put("enabled", value.enabled).putNullable("lastTriggeredAt", value.lastTriggeredAt)
         .put("dailyTriggerCount", value.dailyTriggerCount).putNullable("dailyCountStamp", value.dailyCountStamp)
         .put("createdAt", value.createdAt).put("updatedAt", value.updatedAt).putNullable("deletedAt", value.deletedAt)
+
+    private fun characterRuntimeStateJson(value: CharacterRuntimeStateEntity) = JSONObject()
+        .put("characterId", value.characterId).put("moodValence", value.moodValence).put("moodArousal", value.moodArousal)
+        .put("trust", value.trust).put("closeness", value.closeness).put("completedInteractions", value.completedInteractions)
+        .putNullable("lastInteractionAt", value.lastInteractionAt).putNullable("sourceChatId", value.sourceChatId)
+        .putNullable("sourceMessageId", value.sourceMessageId).put("updatedAt", value.updatedAt)
+
+    private fun agentGoalJson(value: ScheduledAgentGoalEntity) = JSONObject()
+        .put("id", value.id).put("characterId", value.characterId).put("chatId", value.chatId)
+        .put("title", value.title).put("prompt", value.prompt).put("dueAt", value.dueAt).put("status", value.status)
+        .put("createdAt", value.createdAt).put("updatedAt", value.updatedAt).putNullable("completedAt", value.completedAt)
+        .putNullable("resultMessageId", value.resultMessageId).putNullable("failureReason", value.failureReason)
+
+    private fun delegatedAgentGoalJson(value: DelegatedAgentGoalEntity, steps: List<DelegatedAgentGoalStepEntity>) = JSONObject()
+        .put("id", value.id).put("characterId", value.characterId).put("chatId", value.chatId)
+        .put("title", value.title).put("outcome", value.outcome).put("constraints", value.constraints)
+        .put("replanCount", value.replanCount)
+        .put("status", value.status).putNullable("latestSummary", value.latestSummary)
+        .putNullable("pendingQuestion", value.pendingQuestion).putNullable("resumeInput", value.resumeInput)
+        .putNullable("failureReason", value.failureReason).put("createdAt", value.createdAt)
+        .put("updatedAt", value.updatedAt).putNullable("completedAt", value.completedAt)
+        .put("steps", JSONArray(steps.sortedBy { it.stepOrder }.map { step ->
+            JSONObject().put("id", step.id).put("goalId", step.goalId).put("order", step.stepOrder)
+                .put("title", step.title).put("status", step.status).putNullable("summary", step.summary)
+                .put("attempts", step.attempts)
+        }))
 
     private fun parseCharacter(v: JSONObject) = CharacterEntity(
         id = v.str("id"), name = v.str("name"), avatarUri = v.nullableString("avatarUri"),
@@ -354,7 +453,7 @@ class RoomPortableDataManager(
         quietStartMinutes = v.optInt("quietStartMinutes", 1380), quietEndMinutes = v.optInt("quietEndMinutes", 480),
         contextCompressionThreshold = v.optDouble("contextCompressionThreshold", 0.8).toFloat(),
         defaultModelProfileId = v.nullableString("defaultModelProfileId"), reducedMotionEnabled = v.optBoolean("reducedMotionEnabled", false),
-        userName = v.optString("userName", "Yumerin User")
+        userName = v.optString("userName", "Yumerin User"), themeColor = v.optString("themeColor", "BLUE")
     )
 
     private fun parseMembership(v: JSONObject) = GroupMembershipWindowEntity(
@@ -367,6 +466,116 @@ class RoomPortableDataManager(
         hour = v.optInt("hour"), minute = v.optInt("minute"), enabled = v.optBoolean("enabled"), lastTriggeredAt = v.nullableLong("lastTriggeredAt"),
         dailyTriggerCount = v.optInt("dailyTriggerCount"), dailyCountStamp = v.nullableString("dailyCountStamp"), createdAt = v.optLong("createdAt"), updatedAt = v.optLong("updatedAt"), deletedAt = v.nullableLong("deletedAt")
     )
+
+    private fun parseCharacterRuntimeState(v: JSONObject): CharacterRuntimeStateEntity {
+        fun boundedFloat(key: String, default: Float, min: Float, max: Float): Float {
+            val parsed = v.optDouble(key, default.toDouble()).toFloat()
+            return if (parsed.isFinite()) parsed.coerceIn(min, max) else default
+        }
+
+        return CharacterRuntimeStateEntity(
+            characterId = v.str("characterId"),
+            moodValence = boundedFloat("moodValence", 0f, -1f, 1f),
+            moodArousal = boundedFloat("moodArousal", 0.25f, 0f, 1f),
+            trust = boundedFloat("trust", 0.5f, 0f, 1f),
+            closeness = boundedFloat("closeness", 0.5f, 0f, 1f),
+            completedInteractions = v.optInt("completedInteractions").coerceAtLeast(0),
+            lastInteractionAt = v.nullableLong("lastInteractionAt"),
+            sourceChatId = v.nullableString("sourceChatId"),
+            sourceMessageId = v.nullableString("sourceMessageId"),
+            updatedAt = v.optLong("updatedAt").coerceAtLeast(0L)
+        )
+    }
+
+    private fun parseAgentGoal(v: JSONObject): ScheduledAgentGoalEntity {
+        val id = v.str("id")
+        val characterId = v.str("characterId")
+        val chatId = v.str("chatId")
+        val title = v.str("title")
+        val prompt = v.str("prompt")
+        val dueAt = v.optLong("dueAt")
+        val status = v.optString("status", "PENDING")
+        val createdAt = v.optLong("createdAt")
+        val updatedAt = v.optLong("updatedAt")
+        require(id.isNotBlank() && characterId.isNotBlank() && chatId.isNotBlank()) { "一次性目标缺少标识" }
+        require(title.isNotBlank() && title.length <= 80 && prompt.isNotBlank() && prompt.length <= 1_000) { "一次性目标内容长度无效" }
+        require(dueAt > 0L && createdAt > 0L && updatedAt > 0L) { "一次性目标时间无效" }
+        require(status in setOf("PENDING", "COMPLETED", "CANCELLED", "FAILED")) { "一次性目标状态无效" }
+        return ScheduledAgentGoalEntity(
+            id = id, characterId = characterId, chatId = chatId,
+            title = title, prompt = prompt, dueAt = dueAt, status = status,
+            createdAt = createdAt, updatedAt = updatedAt,
+            completedAt = v.nullableLong("completedAt"), resultMessageId = v.nullableString("resultMessageId"),
+            failureReason = v.nullableString("failureReason")
+        )
+    }
+
+    private data class ParsedDelegatedGoal(
+        val goal: DelegatedAgentGoalEntity,
+        val steps: List<DelegatedAgentGoalStepEntity>
+    )
+
+    private fun parseDelegatedAgentGoal(v: JSONObject): ParsedDelegatedGoal {
+        val id = v.str("id")
+        val characterId = v.str("characterId")
+        val chatId = v.str("chatId")
+        val title = v.str("title")
+        val outcome = v.str("outcome")
+        val constraints = v.optString("constraints")
+        val status = v.optString("status", "QUEUED")
+        val createdAt = v.optLong("createdAt")
+        val updatedAt = v.optLong("updatedAt")
+        require(id.isNotBlank() && characterId.isNotBlank() && chatId.isNotBlank()) { "委托目标缺少标识" }
+        require(title.isNotBlank() && title.length <= 80 && outcome.isNotBlank() && outcome.length <= 1_000 && constraints.length <= 1_500) {
+            "委托目标内容长度无效"
+        }
+        require(createdAt > 0L && updatedAt > 0L) { "委托目标时间无效" }
+        require(status in setOf("QUEUED", "RUNNING", "PAUSED", "WAITING_FOR_USER", "COMPLETED", "CANCELLED", "FAILED")) {
+            "委托目标状态无效"
+        }
+        val steps = v.array("steps").map { step ->
+            val stepId = step.str("id")
+            val stepGoalId = step.optString("goalId", id)
+            val order = step.optInt("order", -1)
+            val stepTitle = step.str("title")
+            val stepStatus = step.optString("status", "PENDING")
+            require(stepId.isNotBlank() && stepGoalId == id && order >= 0) { "委托目标步骤标识无效" }
+            require(stepTitle.isNotBlank() && stepTitle.length <= 240) { "委托目标步骤标题无效" }
+            require(stepStatus in setOf("PENDING", "RUNNING", "COMPLETED", "FAILED")) { "委托目标步骤状态无效" }
+            DelegatedAgentGoalStepEntity(
+                id = stepId,
+                goalId = id,
+                stepOrder = order,
+                title = stepTitle,
+                status = stepStatus,
+                summary = step.nullableString("summary")?.take(900),
+                attempts = step.optInt("attempts").coerceIn(0, 100)
+            )
+        }
+        require(steps.size <= 6 && steps.map { it.id }.distinct().size == steps.size && steps.map { it.stepOrder }.distinct().size == steps.size) {
+            "委托目标步骤数量或顺序无效"
+        }
+        return ParsedDelegatedGoal(
+            goal = DelegatedAgentGoalEntity(
+                id = id,
+                characterId = characterId,
+                chatId = chatId,
+                title = title,
+                outcome = outcome,
+                constraints = constraints,
+                replanCount = v.optInt("replanCount").coerceIn(0, 2),
+                status = status,
+                latestSummary = v.nullableString("latestSummary")?.take(900),
+                pendingQuestion = v.nullableString("pendingQuestion")?.take(500),
+                resumeInput = v.nullableString("resumeInput")?.take(1_000),
+                failureReason = v.nullableString("failureReason")?.take(240),
+                createdAt = createdAt,
+                updatedAt = updatedAt,
+                completedAt = v.nullableLong("completedAt")
+            ),
+            steps = steps
+        )
+    }
 }
 
 private fun JSONObject.array(key: String): List<JSONObject> = buildList {
@@ -384,7 +593,10 @@ private fun JSONObject.counts() = PortableDataCounts(
     localArtifacts = array("localArtifacts").size,
     settings = array("settings").size,
     membershipWindows = array("membershipWindows").size,
-    schedules = array("schedules").size
+    schedules = array("schedules").size,
+    characterRuntimeStates = array("characterRuntimeStates").size,
+    agentGoals = array("agentGoals").size,
+    delegatedAgentGoals = array("delegatedAgentGoals").size
 )
 
 private fun JSONObject.str(key: String): String = optString(key, "")

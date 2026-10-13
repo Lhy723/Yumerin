@@ -18,7 +18,8 @@ fun AppSettingsEntity.toDomain() = AppSettings(
     defaultModelProfileId = defaultModelProfileId,
     reducedMotionEnabled = reducedMotionEnabled,
     userName = userName,
-    userAvatarUri = userAvatarUri
+    userAvatarUri = userAvatarUri,
+    themeColor = enumValueOrDefault(themeColor, ThemeColor.BLUE)
 )
 
 fun AppSettings.toEntity() = AppSettingsEntity(
@@ -37,5 +38,6 @@ fun AppSettings.toEntity() = AppSettingsEntity(
     defaultModelProfileId = defaultModelProfileId,
     reducedMotionEnabled = reducedMotionEnabled,
     userName = userName,
-    userAvatarUri = userAvatarUri
+    userAvatarUri = userAvatarUri,
+    themeColor = themeColor.name
 )

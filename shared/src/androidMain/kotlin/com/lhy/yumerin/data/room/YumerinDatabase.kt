@@ -16,9 +16,13 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LocalModelArtifactEntity::class,
         AppSettingsEntity::class,
         GroupMembershipWindowEntity::class,
-        CompanionScheduleEntity::class
+        CompanionScheduleEntity::class,
+        CharacterRuntimeStateEntity::class,
+        ScheduledAgentGoalEntity::class,
+        DelegatedAgentGoalEntity::class,
+        DelegatedAgentGoalStepEntity::class
     ],
-    version = 6,
+    version = 10,
     exportSchema = false
 )
 abstract class YumerinDatabase : RoomDatabase() {
@@ -31,6 +35,10 @@ abstract class YumerinDatabase : RoomDatabase() {
     abstract fun settingsDao(): SettingsDao
     abstract fun groupMembershipWindowDao(): GroupMembershipWindowDao
     abstract fun companionScheduleDao(): CompanionScheduleDao
+    abstract fun characterRuntimeStateDao(): CharacterRuntimeStateDao
+    abstract fun scheduledAgentGoalDao(): ScheduledAgentGoalDao
+    abstract fun delegatedAgentGoalDao(): DelegatedAgentGoalDao
+    abstract fun delegatedAgentGoalStepDao(): DelegatedAgentGoalStepDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -111,5 +119,84 @@ abstract class YumerinDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE app_settings ADD COLUMN userAvatarUri TEXT")
             }
         }
+
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE app_settings ADD COLUMN themeColor TEXT NOT NULL DEFAULT 'BLUE'")
+            }
+        }
+
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS character_runtime_states (" +
+                        "characterId TEXT NOT NULL PRIMARY KEY, " +
+                        "moodValence REAL NOT NULL, " +
+                        "moodArousal REAL NOT NULL, " +
+                        "trust REAL NOT NULL, " +
+                        "closeness REAL NOT NULL, " +
+                        "completedInteractions INTEGER NOT NULL, " +
+                        "lastInteractionAt INTEGER, " +
+                        "sourceChatId TEXT, " +
+                        "sourceMessageId TEXT, " +
+                        "updatedAt INTEGER NOT NULL)"
+                )
+            }
+        }
+
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS scheduled_agent_goals (" +
+                        "id TEXT NOT NULL PRIMARY KEY, " +
+                        "characterId TEXT NOT NULL, " +
+                        "chatId TEXT NOT NULL, " +
+                        "title TEXT NOT NULL, " +
+                        "prompt TEXT NOT NULL, " +
+                        "dueAt INTEGER NOT NULL, " +
+                        "status TEXT NOT NULL, " +
+                        "createdAt INTEGER NOT NULL, " +
+                        "updatedAt INTEGER NOT NULL, " +
+                        "completedAt INTEGER, " +
+                        "resultMessageId TEXT, " +
+                        "failureReason TEXT)"
+                )
+            }
+        }
+
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS delegated_agent_goals (" +
+                        "id TEXT NOT NULL PRIMARY KEY, " +
+                        "characterId TEXT NOT NULL, " +
+                        "chatId TEXT NOT NULL, " +
+                        "title TEXT NOT NULL, " +
+                        "outcome TEXT NOT NULL, " +
+                        "constraints TEXT NOT NULL, " +
+                        "replanCount INTEGER NOT NULL DEFAULT 0, " +
+                        "status TEXT NOT NULL, " +
+                        "latestSummary TEXT, " +
+                        "pendingQuestion TEXT, " +
+                        "resumeInput TEXT, " +
+                        "failureReason TEXT, " +
+                        "createdAt INTEGER NOT NULL, " +
+                        "updatedAt INTEGER NOT NULL, " +
+                        "completedAt INTEGER)"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS delegated_agent_goal_steps (" +
+                        "id TEXT NOT NULL, " +
+                        "goalId TEXT NOT NULL, " +
+                        "stepOrder INTEGER NOT NULL, " +
+                        "title TEXT NOT NULL, " +
+                        "status TEXT NOT NULL, " +
+                        "summary TEXT, " +
+                        "attempts INTEGER NOT NULL, " +
+                        "PRIMARY KEY(id, goalId))"
+                )
+            }
+        }
+
     }
 }

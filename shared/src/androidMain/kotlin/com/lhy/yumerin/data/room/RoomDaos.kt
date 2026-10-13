@@ -218,3 +218,90 @@ interface CompanionScheduleDao {
     @Query("DELETE FROM companion_schedules")
     suspend fun deleteAll()
 }
+
+@Dao
+interface CharacterRuntimeStateDao {
+    @Query("SELECT * FROM character_runtime_states WHERE characterId = :characterId LIMIT 1")
+    fun observeByCharacterId(characterId: String): Flow<CharacterRuntimeStateEntity?>
+
+    @Query("SELECT * FROM character_runtime_states WHERE characterId = :characterId LIMIT 1")
+    suspend fun findByCharacterId(characterId: String): CharacterRuntimeStateEntity?
+
+    @Query("SELECT * FROM character_runtime_states ORDER BY updatedAt ASC")
+    suspend fun getAll(): List<CharacterRuntimeStateEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(entity: CharacterRuntimeStateEntity)
+
+    @Query("DELETE FROM character_runtime_states WHERE characterId = :characterId")
+    suspend fun deleteForCharacter(characterId: String)
+
+    @Query("DELETE FROM character_runtime_states")
+    suspend fun deleteAll()
+}
+
+@Dao
+interface ScheduledAgentGoalDao {
+    @Query("SELECT * FROM scheduled_agent_goals ORDER BY dueAt ASC")
+    fun observeAll(): Flow<List<ScheduledAgentGoalEntity>>
+
+    @Query("SELECT * FROM scheduled_agent_goals WHERE status = 'PENDING' ORDER BY dueAt ASC")
+    suspend fun getPending(): List<ScheduledAgentGoalEntity>
+
+    @Query("SELECT * FROM scheduled_agent_goals ORDER BY dueAt ASC")
+    suspend fun getAll(): List<ScheduledAgentGoalEntity>
+
+    @Query("SELECT * FROM scheduled_agent_goals WHERE id = :id LIMIT 1")
+    suspend fun findById(id: String): ScheduledAgentGoalEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(entity: ScheduledAgentGoalEntity)
+
+    @Query("DELETE FROM scheduled_agent_goals WHERE id = :id")
+    suspend fun deleteById(id: String)
+
+    @Query("DELETE FROM scheduled_agent_goals")
+    suspend fun deleteAll()
+}
+
+@Dao
+interface DelegatedAgentGoalDao {
+    @Query("SELECT * FROM delegated_agent_goals ORDER BY updatedAt DESC")
+    fun observeAll(): Flow<List<DelegatedAgentGoalEntity>>
+
+    @Query("SELECT * FROM delegated_agent_goals ORDER BY createdAt ASC")
+    suspend fun getAll(): List<DelegatedAgentGoalEntity>
+
+    @Query("SELECT * FROM delegated_agent_goals WHERE id = :id LIMIT 1")
+    suspend fun findById(id: String): DelegatedAgentGoalEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(entity: DelegatedAgentGoalEntity)
+
+    @Query("DELETE FROM delegated_agent_goals WHERE id = :id")
+    suspend fun deleteById(id: String)
+
+    @Query("DELETE FROM delegated_agent_goals")
+    suspend fun deleteAll()
+}
+
+@Dao
+interface DelegatedAgentGoalStepDao {
+    @Query("SELECT * FROM delegated_agent_goal_steps ORDER BY goalId ASC, stepOrder ASC")
+    fun observeAll(): Flow<List<DelegatedAgentGoalStepEntity>>
+
+    @Query("SELECT * FROM delegated_agent_goal_steps WHERE goalId = :goalId ORDER BY stepOrder ASC")
+    suspend fun getForGoal(goalId: String): List<DelegatedAgentGoalStepEntity>
+
+    @Query("SELECT * FROM delegated_agent_goal_steps ORDER BY goalId ASC, stepOrder ASC")
+    suspend fun getAll(): List<DelegatedAgentGoalStepEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(entity: DelegatedAgentGoalStepEntity)
+
+    @Query("DELETE FROM delegated_agent_goal_steps WHERE goalId = :goalId")
+    suspend fun deleteForGoal(goalId: String)
+
+    @Query("DELETE FROM delegated_agent_goal_steps")
+    suspend fun deleteAll()
+}

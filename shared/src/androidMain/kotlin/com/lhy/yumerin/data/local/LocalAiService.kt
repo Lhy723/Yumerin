@@ -7,7 +7,7 @@ import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.lhy.yumerin.core.model.LocalModelArtifact
-import com.lhy.yumerin.domain.agent.AgentPromptMessage
+import com.lhy.yumerin.core.model.AgentConversationMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -99,10 +99,17 @@ class LocalAiService private constructor(
     ) : AutoCloseable {
         private var closed = false
 
-        suspend fun generate(systemInstruction: String, prompt: String): String = withContext(Dispatchers.IO) {
+        suspend fun generate(
+            systemInstruction: String,
+            prompt: String,
+            maxOutputTokens: Int? = null
+        ): String = withContext(Dispatchers.IO) {
             check(!closed) { "Local model lease is closed" }
             cached.engine.createConversation(
-                ConversationConfig(systemInstruction = Contents.of(systemInstruction))
+                ConversationConfig(
+                    systemInstruction = Contents.of(systemInstruction),
+                    maxOutputToken = maxOutputTokens
+                )
             ).use { conversation ->
                 conversation.sendMessage(prompt)
                     .contents
@@ -129,4 +136,4 @@ class LocalAiService private constructor(
     }
 }
 
-fun List<AgentPromptMessage>.asLocalPrompt(): String = joinToString("\n") { "${it.role}: ${it.content}" }
+fun List<AgentConversationMessage>.asLocalPrompt(): String = joinToString("\n") { "${it.role}: ${it.content}" }

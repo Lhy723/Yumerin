@@ -4,6 +4,8 @@ import com.lhy.yumerin.core.model.*
 import com.lhy.yumerin.domain.repository.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
+import androidx.room.withTransaction
 
 internal class RoomCharacterRepository(
     private val database: YumerinDatabase
@@ -121,4 +123,62 @@ internal class RoomCompanionScheduleRepository(
     override suspend fun getSchedule(id: EntityId): CompanionSchedule? = dao.findById(id)?.toDomain()
     override suspend fun saveSchedule(schedule: CompanionSchedule) = dao.upsert(schedule.toEntity())
     override suspend fun deleteSchedule(id: EntityId) = dao.deleteById(id)
+}
+
+internal class RoomCharacterRuntimeStateRepository(
+    private val database: YumerinDatabase
+) : CharacterRuntimeStateRepository {
+    private val dao = database.characterRuntimeStateDao()
+    override fun observeState(characterId: EntityId): Flow<CharacterRuntimeState?> =
+        dao.observeByCharacterId(characterId).map { it?.toDomain() }
+    override suspend fun getState(characterId: EntityId): CharacterRuntimeState? =
+        dao.findByCharacterId(characterId)?.toDomain()
+    override suspend fun saveState(state: CharacterRuntimeState) = dao.upsert(state.toEntity())
+    override suspend fun deleteState(characterId: EntityId) = dao.deleteForCharacter(characterId)
+}
+
+internal class RoomAgentGoalRepository(
+    private val database: YumerinDatabase
+) : AgentGoalRepository {
+    private val dao = database.scheduledAgentGoalDao()
+    override fun observeGoals(): Flow<List<ScheduledAgentGoal>> = dao.observeAll().map { it.map(ScheduledAgentGoalEntity::toDomain) }
+    override suspend fun getGoal(id: EntityId): ScheduledAgentGoal? = dao.findById(id)?.toDomain()
+    override suspend fun saveGoal(goal: ScheduledAgentGoal) = dao.upsert(goal.toEntity())
+    override suspend fun deleteGoal(id: EntityId) = dao.deleteById(id)
+}
+
+internal class RoomDelegatedAgentGoalRepository(
+    private val database: YumerinDatabase
+) : DelegatedAgentGoalRepository {
+    private val goalDao = database.delegatedAgentGoalDao()
+    private val stepDao = database.delegatedAgentGoalStepDao()
+
+    override fun observeGoals(): Flow<List<DelegatedAgentGoal>> = combine(
+        goalDao.observeAll(), stepDao.observeAll()
+    ) { goals, steps ->
+        val stepsByGoal = steps.groupBy { it.goalId }
+        goals.map { entity ->
+            entity.toDomain(stepsByGoal[entity.id].orEmpty().map(DelegatedAgentGoalStepEntity::toDomain))
+        }
+    }
+
+    override suspend fun getGoal(id: EntityId): DelegatedAgentGoal? {
+        val goal = goalDao.findById(id) ?: return null
+        return goal.toDomain(stepDao.getForGoal(id).map(DelegatedAgentGoalStepEntity::toDomain))
+    }
+
+    override suspend fun saveGoal(goal: DelegatedAgentGoal) {
+        database.withTransaction {
+            goalDao.upsert(goal.toEntity())
+            stepDao.deleteForGoal(goal.id)
+            goal.steps.forEach { stepDao.upsert(it.toEntity()) }
+        }
+    }
+
+    override suspend fun deleteGoal(id: EntityId) {
+        database.withTransaction {
+            stepDao.deleteForGoal(id)
+            goalDao.deleteById(id)
+        }
+    }
 }

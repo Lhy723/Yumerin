@@ -51,6 +51,7 @@ class CompanionMaintenanceWorker(
         val dayStamp = (now / 86_400_000L).toString()
         graph.schedules.observeSchedules().first()
             .filter { it.enabled && it.hour * 60 + it.minute <= currentMinutes }
+            .filter { schedule -> schedule.lastTriggeredAt?.let { !isSameLocalDay(it, now) } ?: true }
             .filter { it.dailyCountStamp != dayStamp || it.dailyTriggerCount < settings.dailyProactiveLimit }
             .forEach { schedule ->
                 when (val result = graph.useCases.sendProactiveMessage(schedule, settings)) {
@@ -71,4 +72,11 @@ class CompanionMaintenanceWorker(
 
     private fun isQuiet(current: Int, start: Int, end: Int): Boolean =
         if (start == end) false else if (start < end) current in start until end else current >= start || current < end
+
+    private fun isSameLocalDay(firstMillis: Long, secondMillis: Long): Boolean {
+        val first = Calendar.getInstance().apply { timeInMillis = firstMillis }
+        val second = Calendar.getInstance().apply { timeInMillis = secondMillis }
+        return first.get(Calendar.YEAR) == second.get(Calendar.YEAR) &&
+            first.get(Calendar.DAY_OF_YEAR) == second.get(Calendar.DAY_OF_YEAR)
+    }
 }

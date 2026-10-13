@@ -5,6 +5,9 @@ import com.lhy.yumerin.core.model.AgentReply
 import com.lhy.yumerin.core.model.AgentRequest
 import com.lhy.yumerin.core.model.AgentService
 import com.lhy.yumerin.core.model.CharacterProfile
+import com.lhy.yumerin.core.model.CharacterRuntimeState
+import com.lhy.yumerin.core.model.ScheduledAgentGoal
+import com.lhy.yumerin.core.model.DelegatedAgentGoal
 import com.lhy.yumerin.core.model.ChatMessage
 import com.lhy.yumerin.core.model.ChatThread
 import com.lhy.yumerin.core.model.CompanionSchedule
@@ -17,6 +20,8 @@ import com.lhy.yumerin.core.model.ModelProfile
 import com.lhy.yumerin.core.model.newEntityId
 import com.lhy.yumerin.domain.AppGraph
 import com.lhy.yumerin.domain.background.BackgroundCompanionController
+import com.lhy.yumerin.domain.background.AgentGoalScheduler
+import com.lhy.yumerin.domain.background.DelegatedAgentGoalScheduler
 import com.lhy.yumerin.domain.repository.CharacterRepository
 import com.lhy.yumerin.domain.repository.AvatarStore
 import com.lhy.yumerin.domain.repository.ChatRepository
@@ -26,6 +31,9 @@ import com.lhy.yumerin.domain.repository.MemoryRepository
 import com.lhy.yumerin.domain.repository.ModelProfileRepository
 import com.lhy.yumerin.domain.repository.SettingsRepository
 import com.lhy.yumerin.domain.repository.CompanionScheduleRepository
+import com.lhy.yumerin.domain.repository.CharacterRuntimeStateRepository
+import com.lhy.yumerin.domain.repository.AgentGoalRepository
+import com.lhy.yumerin.domain.repository.DelegatedAgentGoalRepository
 import com.lhy.yumerin.domain.repository.GroupMembershipRepository
 import com.lhy.yumerin.domain.repository.ImportResult
 import com.lhy.yumerin.domain.repository.ImportPreview
@@ -50,6 +58,21 @@ class InMemoryAppGraph : AppGraph {
     override val settings: SettingsRepository = InMemorySettingsRepository()
     override val groupMemberships: GroupMembershipRepository = InMemoryGroupMembershipRepository()
     override val schedules: CompanionScheduleRepository = InMemoryCompanionScheduleRepository()
+    override val characterRuntimeStates: CharacterRuntimeStateRepository = InMemoryCharacterRuntimeStateRepository()
+    override val agentGoals: AgentGoalRepository = InMemoryAgentGoalRepository()
+    override val agentGoalScheduler: AgentGoalScheduler = object : AgentGoalScheduler {
+        override suspend fun schedule(goalId: String, dueAtMillis: Long) = Unit
+        override suspend fun cancel(goalId: String) = Unit
+        override suspend fun setEnabled(enabled: Boolean) = Unit
+    }
+    override val delegatedAgentGoals: DelegatedAgentGoalRepository = InMemoryDelegatedAgentGoalRepository()
+    override val delegatedAgentGoalScheduler: DelegatedAgentGoalScheduler = object : DelegatedAgentGoalScheduler {
+        override suspend fun enqueue(goalId: String) = Unit
+        override suspend fun enqueueNext(goalId: String) = Unit
+        override suspend fun cancel(goalId: String) = Unit
+        override suspend fun reconcile() = Unit
+        override suspend fun cancelAll() = Unit
+    }
     override val localModelGateway: LocalModelGateway = InMemoryLocalModelGateway(models)
     override val portableData: PortableDataManager = InMemoryPortableDataManager()
     override val credentials: CredentialStore = InMemoryCredentialStore()
@@ -57,7 +80,7 @@ class InMemoryAppGraph : AppGraph {
     override val agent: AgentService = UnavailableAgentService()
     override val backgroundCompanion: BackgroundCompanionController = InMemoryBackgroundCompanionController()
     override val useCases: AppUseCases by lazy {
-        AppUseCases(characters, chats, groups, memories, models, agent, groupMemberships, schedules, avatars)
+        AppUseCases(characters, chats, groups, memories, models, agent, settings, groupMemberships, schedules, avatars, characterRuntimeStates, agentGoals, agentGoalScheduler, delegatedAgentGoals = delegatedAgentGoals, delegatedAgentGoalScheduler = delegatedAgentGoalScheduler)
     }
 
     private val seedMutex = Mutex()
@@ -266,6 +289,38 @@ private class InMemoryCompanionScheduleRepository : CompanionScheduleRepository 
     override suspend fun deleteSchedule(id: EntityId) { state.update { values -> values.filterNot { it.id == id } } }
 }
 
+private class InMemoryCharacterRuntimeStateRepository : CharacterRuntimeStateRepository {
+    private val state = MutableStateFlow<Map<EntityId, CharacterRuntimeState>>(emptyMap())
+    override fun observeState(characterId: EntityId): Flow<CharacterRuntimeState?> = state.map { it[characterId] }
+    override suspend fun getState(characterId: EntityId): CharacterRuntimeState? = state.value[characterId]
+    override suspend fun saveState(state: CharacterRuntimeState) {
+        this.state.update { current -> current + (state.characterId to state) }
+    }
+    override suspend fun deleteState(characterId: EntityId) {
+        state.update { current -> current - characterId }
+    }
+}
+
+private class InMemoryAgentGoalRepository : AgentGoalRepository {
+    private val state = MutableStateFlow<List<ScheduledAgentGoal>>(emptyList())
+    override fun observeGoals(): Flow<List<ScheduledAgentGoal>> = state
+    override suspend fun getGoal(id: EntityId): ScheduledAgentGoal? = state.value.firstOrNull { it.id == id }
+    override suspend fun saveGoal(goal: ScheduledAgentGoal) {
+        state.update { current -> current.filterNot { it.id == goal.id } + goal }
+    }
+    override suspend fun deleteGoal(id: EntityId) {
+        state.update { current -> current.filterNot { it.id == id } }
+    }
+}
+
+private class InMemoryDelegatedAgentGoalRepository : DelegatedAgentGoalRepository {
+    private val state = MutableStateFlow<List<DelegatedAgentGoal>>(emptyList())
+    override fun observeGoals(): Flow<List<DelegatedAgentGoal>> = state
+    override suspend fun getGoal(id: EntityId): DelegatedAgentGoal? = state.value.firstOrNull { it.id == id }
+    override suspend fun saveGoal(goal: DelegatedAgentGoal) { state.update { current -> current.filterNot { it.id == goal.id } + goal } }
+    override suspend fun deleteGoal(id: EntityId) { state.update { current -> current.filterNot { it.id == id } } }
+}
+
 private class InMemoryLocalModelGateway(
     private val models: ModelProfileRepository
 ) : LocalModelGateway {
@@ -279,7 +334,7 @@ private class InMemoryLocalModelGateway(
 }
 
 private class InMemoryPortableDataManager : PortableDataManager {
-    override suspend fun exportData(): String = "{\"format\":\"yumerin-portable\",\"version\":1}"
+    override suspend fun exportData(): String = "{\"format\":\"yumerin-portable\",\"version\":1,\"characterRuntimeStates\":[],\"agentGoals\":[],\"delegatedAgentGoals\":[]}"
     override suspend fun previewImport(payload: String): ImportPreview =
         ImportPreview(false, null, message = "预览模式不持久化数据")
     override suspend fun importData(payload: String, conflictPolicy: ImportConflictPolicy): ImportResult =

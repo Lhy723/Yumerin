@@ -62,6 +62,7 @@ kotlin {
             implementation(libs.compose.backdrop)
             implementation(libs.kyant.shapes)
             implementation(libs.miuix.ui)
+            implementation(libs.miuix.preference)
             implementation(libs.compose.components.resources)
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
@@ -69,6 +70,7 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
         }
         jsMain.dependencies {
             implementation(libs.wrappers.browser)

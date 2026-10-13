@@ -41,7 +41,11 @@ private val DATABASE_MIGRATIONS = arrayOf(
     YumerinDatabase.MIGRATION_2_3,
     YumerinDatabase.MIGRATION_3_4,
     YumerinDatabase.MIGRATION_4_5,
-    YumerinDatabase.MIGRATION_5_6
+    YumerinDatabase.MIGRATION_5_6,
+    YumerinDatabase.MIGRATION_6_7,
+    YumerinDatabase.MIGRATION_7_8,
+    YumerinDatabase.MIGRATION_8_9,
+    YumerinDatabase.MIGRATION_9_10
 )
 
 /**
@@ -81,6 +85,10 @@ private fun migrateLegacyDatabaseIfNeeded(
             val settings = legacyDatabase.settingsDao().getAll()
             val membershipWindows = legacyDatabase.groupMembershipWindowDao().getAll()
             val schedules = legacyDatabase.companionScheduleDao().getAll()
+            val runtimeStates = legacyDatabase.characterRuntimeStateDao().getAll()
+            val agentGoals = legacyDatabase.scheduledAgentGoalDao().getAll()
+            val delegatedGoals = legacyDatabase.delegatedAgentGoalDao().getAll()
+            val delegatedGoalSteps = legacyDatabase.delegatedAgentGoalStepDao().getAll()
 
             secureDatabase.withTransaction {
                 characters.forEach { secureDatabase.characterDao().upsert(it) }
@@ -93,6 +101,10 @@ private fun migrateLegacyDatabaseIfNeeded(
                 settings.forEach { secureDatabase.settingsDao().upsert(it) }
                 membershipWindows.forEach { secureDatabase.groupMembershipWindowDao().upsert(it) }
                 schedules.forEach { secureDatabase.companionScheduleDao().upsert(it) }
+                runtimeStates.forEach { secureDatabase.characterRuntimeStateDao().upsert(it) }
+                agentGoals.forEach { secureDatabase.scheduledAgentGoalDao().upsert(it) }
+                delegatedGoals.forEach { secureDatabase.delegatedAgentGoalDao().upsert(it) }
+                delegatedGoalSteps.forEach { secureDatabase.delegatedAgentGoalStepDao().upsert(it) }
             }
         }
         legacyDatabase.close()

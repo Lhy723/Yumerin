@@ -1,6 +1,7 @@
 package com.lhy.yumerin.data.room
 
 import androidx.room.Entity
+import androidx.room.ColumnInfo
 import androidx.room.PrimaryKey
 
 @Entity(tableName = "characters")
@@ -166,7 +167,9 @@ data class AppSettingsEntity(
     val defaultModelProfileId: String? = null,
     val reducedMotionEnabled: Boolean = false,
     val userName: String = "Yumerin User",
-    val userAvatarUri: String? = null
+    val userAvatarUri: String? = null,
+    @ColumnInfo(defaultValue = "'BLUE'")
+    val themeColor: String = "BLUE"
 ) {
     companion object {
         const val GLOBAL_ID = "global"
@@ -200,4 +203,64 @@ data class CompanionScheduleEntity(
     val createdAt: Long,
     val updatedAt: Long,
     val deletedAt: Long? = null
+)
+
+@Entity(tableName = "character_runtime_states")
+data class CharacterRuntimeStateEntity(
+    @PrimaryKey val characterId: String,
+    val moodValence: Float,
+    val moodArousal: Float,
+    val trust: Float,
+    val closeness: Float,
+    val completedInteractions: Int,
+    val lastInteractionAt: Long?,
+    val sourceChatId: String?,
+    val sourceMessageId: String?,
+    val updatedAt: Long
+)
+
+@Entity(tableName = "scheduled_agent_goals")
+data class ScheduledAgentGoalEntity(
+    @PrimaryKey val id: String,
+    val characterId: String,
+    val chatId: String,
+    val title: String,
+    val prompt: String,
+    val dueAt: Long,
+    val status: String,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val completedAt: Long?,
+    val resultMessageId: String?,
+    val failureReason: String?
+)
+
+@Entity(tableName = "delegated_agent_goals")
+data class DelegatedAgentGoalEntity(
+    @PrimaryKey val id: String,
+    val characterId: String,
+    val chatId: String,
+    val title: String,
+    val outcome: String,
+    val constraints: String,
+    @ColumnInfo(defaultValue = "0") val replanCount: Int = 0,
+    val status: String,
+    val latestSummary: String?,
+    val pendingQuestion: String?,
+    val resumeInput: String?,
+    val failureReason: String?,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val completedAt: Long?
+)
+
+@Entity(tableName = "delegated_agent_goal_steps", primaryKeys = ["id", "goalId"])
+data class DelegatedAgentGoalStepEntity(
+    val id: String,
+    val goalId: String,
+    val stepOrder: Int,
+    val title: String,
+    val status: String,
+    val summary: String?,
+    val attempts: Int
 )
