@@ -8,7 +8,14 @@ import com.lhy.yumerin.domain.background.DelegatedAgentGoalScheduler
 import com.lhy.yumerin.domain.repository.*
 import com.lhy.yumerin.domain.safety.SafetyPolicy
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+
+class ObserveDelegatedAgentGoalsUseCase(
+    private val goals: DelegatedAgentGoalRepository
+) {
+    operator fun invoke(): Flow<List<DelegatedAgentGoal>> = goals.observeGoals()
+}
 
 sealed interface CreateDelegatedAgentGoalResult {
     data class Created(val goal: DelegatedAgentGoal) : CreateDelegatedAgentGoalResult

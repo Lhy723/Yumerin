@@ -8,7 +8,14 @@ import com.lhy.yumerin.domain.background.AgentGoalScheduler
 import com.lhy.yumerin.domain.repository.*
 import com.lhy.yumerin.domain.safety.SafetyPolicy
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+
+class ObserveScheduledAgentGoalsUseCase(
+    private val goals: AgentGoalRepository
+) {
+    operator fun invoke(): Flow<List<ScheduledAgentGoal>> = goals.observeGoals()
+}
 
 sealed interface ScheduleAgentGoalResult {
     data class Scheduled(val goal: ScheduledAgentGoal) : ScheduleAgentGoalResult

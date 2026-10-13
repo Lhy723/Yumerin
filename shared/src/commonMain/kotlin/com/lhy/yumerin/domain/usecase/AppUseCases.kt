@@ -49,6 +49,8 @@ class AppUseCases(
     val saveCharacter = SaveCharacterUseCase(characters, chats, avatars)
     val observeCharacterRuntimeState = ObserveCharacterRuntimeStateUseCase(characterRuntimeStates)
     val updateCharacterContinuity = UpdateCharacterContinuityUseCase(characterRuntimeStates)
+    val observeScheduledAgentGoals = ObserveScheduledAgentGoalsUseCase(agentGoals)
+    val observeDelegatedAgentGoals = ObserveDelegatedAgentGoalsUseCase(delegatedGoalRepository)
     val createGroupChat = CreateGroupChatUseCase(groups, chats, memberships)
     val createDirectChat = CreateDirectChatUseCase(chats)
     val updateGroupChat = UpdateGroupChatUseCase(groups, chats, memberships)

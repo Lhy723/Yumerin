@@ -519,7 +519,13 @@ private fun AppContent(
                                     val state by useCases.observeCharacterRuntimeState(screen.characterId).collectAsState(null)
                                     CharacterContinuityPage(
                                         character = character,
-                                        state = state,
+                                        state = state?.let {
+                                            CharacterContinuityUiState(
+                                                moodValence = it.moodValence,
+                                                trust = it.trust,
+                                                closeness = it.closeness
+                                            )
+                                        },
                                         onSave = { mood, trust, closeness ->
                                             scope.launch {
                                                 useCases.updateCharacterContinuity(screen.characterId, mood, trust, closeness)

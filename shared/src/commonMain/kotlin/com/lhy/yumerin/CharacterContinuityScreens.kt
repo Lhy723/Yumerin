@@ -26,8 +26,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.lhy.yumerin.core.model.CharacterProfile
-import com.lhy.yumerin.core.model.CharacterRuntimeState
 import com.lhy.yumerin.core.model.EntityId
+
+internal data class CharacterContinuityUiState(
+    val moodValence: Float,
+    val trust: Float,
+    val closeness: Float
+)
 
 @Composable
 internal fun CharacterContinuityListPage(
@@ -76,7 +81,7 @@ internal fun CharacterContinuityListPage(
 @Composable
 internal fun CharacterContinuityPage(
     character: CharacterProfile,
-    state: CharacterRuntimeState?,
+    state: CharacterContinuityUiState?,
     onSave: (moodValence: Float, trust: Float, closeness: Float) -> Unit,
     onBack: () -> Unit
 ) {

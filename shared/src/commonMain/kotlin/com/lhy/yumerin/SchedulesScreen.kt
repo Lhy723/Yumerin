@@ -41,8 +41,8 @@ internal fun SchedulesPage(
     onBack: () -> Unit
 ) {
     val schedules by graph.schedules.observeSchedules().collectAsState(emptyList())
-    val agentGoals by graph.agentGoals.observeGoals().collectAsState(emptyList())
-    val delegatedGoals by graph.delegatedAgentGoals.observeGoals().collectAsState(emptyList())
+    val agentGoals by graph.useCases.observeScheduledAgentGoals().collectAsState(emptyList())
+    val delegatedGoals by graph.useCases.observeDelegatedAgentGoals().collectAsState(emptyList())
     val scope = rememberCoroutineScope()
     var title by remember { mutableStateOf("") }
     var prompt by remember { mutableStateOf("") }
