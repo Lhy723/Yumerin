@@ -545,6 +545,7 @@ private fun AppContent(
                                 onBack = { destination = AppDestination.PROFILE }
                             )
                             AppDestination.SCHEDULES -> SchedulesPage(
+                                backdrop = backdrop,
                                 graph = graph,
                                 characters = characters,
                                 chats = chats,

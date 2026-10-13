@@ -20,6 +20,7 @@ import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.*
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.kyant.backdrop.Backdrop
 import com.lhy.yumerin.core.model.*
 import com.lhy.yumerin.data.memory.*
 import com.lhy.yumerin.designsystem.*
@@ -33,6 +34,7 @@ import kotlin.time.Clock
 
 @Composable
 internal fun SchedulesPage(
+    backdrop: Backdrop,
     graph: AppGraph,
     characters: List<CharacterProfile>,
     chats: List<ChatThread>,
@@ -65,11 +67,11 @@ internal fun SchedulesPage(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            MiuixBackButton(onClick = onBack)
+            GlassBackButton(backdrop = backdrop, onClick = onBack)
             Text("计划与目标", style = MaterialTheme.typography.headlineLarge)
         }
         Text("周期计划需要开启全局和角色主动开关；一次性互动需要开启全局开关。明确委托的目标独立运行。静默时段或关闭通知权限只会隐藏提醒，不删除聊天消息。")
-        MiuixCardSurface(Modifier.fillMaxWidth()) {
+        GlassSurface(backdrop, Modifier.fillMaxWidth()) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("新建计划", style = MaterialTheme.typography.titleLarge)
                 OutlinedTextField(title, { title = it }, Modifier.fillMaxWidth(), label = { Text("计划名称") }, singleLine = true)
@@ -125,7 +127,7 @@ internal fun SchedulesPage(
                 ) { Text("保存计划") }
             }
         }
-        MiuixCardSurface(Modifier.fillMaxWidth()) {
+        GlassSurface(backdrop, Modifier.fillMaxWidth()) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("一次性目标", style = MaterialTheme.typography.titleLarge)
                 Text("安排角色在指定延迟后主动完成一次轻量互动。目标只生成普通聊天消息，不会执行外部操作。")
@@ -176,7 +178,7 @@ internal fun SchedulesPage(
             }
         }
         agentGoals.filter { it.status != AgentGoalStatus.CANCELLED }.forEach { goal ->
-            MiuixCardSurface(Modifier.fillMaxWidth()) {
+            GlassSurface(backdrop, Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(goal.title, style = MaterialTheme.typography.titleMedium)
                     val remainingMinutes = ((goal.dueAt - nowMillis()).coerceAtLeast(0L) / 60_000L)
@@ -194,7 +196,7 @@ internal fun SchedulesPage(
                 }
             }
         }
-        MiuixCardSurface(Modifier.fillMaxWidth()) {
+        GlassSurface(backdrop, Modifier.fillMaxWidth()) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("委托目标", style = MaterialTheme.typography.titleLarge)
                 Text("描述你希望达成的结果。Agent 会把它拆成最多 6 步，后台逐步处理；需要你补充信息时会暂停等待。明确委托的目标不受全局主动消息开关限制，后台执行尽力而为；当前可用能力以应用内已接入的模块为限。")
@@ -236,7 +238,7 @@ internal fun SchedulesPage(
             }
         }
         delegatedGoals.filter { it.status != DelegatedAgentGoalStatus.CANCELLED }.forEach { goal ->
-            MiuixCardSurface(Modifier.fillMaxWidth()) {
+            GlassSurface(backdrop, Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Text(goal.title, style = MaterialTheme.typography.titleMedium)
                     Text("${delegatedGoalStatusLabel(goal.status)} · ${goal.outcome}")
@@ -285,7 +287,7 @@ internal fun SchedulesPage(
             }
         }
         schedules.forEach { schedule ->
-            MiuixCardSurface(Modifier.fillMaxWidth()) {
+            GlassSurface(backdrop, Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(schedule.title, style = MaterialTheme.typography.titleMedium)
                     Text("每天 ${schedule.hour.pad2()}:${schedule.minute.pad2()} · ${schedule.prompt}")
