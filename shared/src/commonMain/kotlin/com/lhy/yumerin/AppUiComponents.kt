@@ -138,17 +138,66 @@ internal fun MiuixGlassIconButton(
 }
 
 @Composable
+internal fun MiuixGlassSurface(
+    modifier: Modifier = Modifier,
+    shape: Shape,
+    backdrop: Backdrop? = LocalGlassButtonBackdrop.current,
+    content: @Composable BoxScope.() -> Unit
+) {
+    val isLightTheme = MaterialTheme.colorScheme.surface.luminance() > 0.5f
+    val containerColor = if (isLightTheme) {
+        Color(0xFFFAFAFA).copy(alpha = 0.76f)
+    } else {
+        Color(0xFF242424).copy(alpha = 0.84f)
+    }
+    val edgeLight = EdgeLight(
+        color = Color.White.copy(alpha = if (isLightTheme) 0.6f else 0.2f),
+        width = if (isLightTheme) 0.24.dp else 0.34.dp,
+        blurRadius = 0.4.dp
+    )
+
+    Box(
+        modifier = modifier
+            .shadow(
+                elevation = 4.dp,
+                shape = shape,
+                clip = false,
+                ambientColor = Color.Black.copy(alpha = 0.08f),
+                spotColor = Color.Black.copy(alpha = 0.08f)
+            )
+            .then(
+                if (backdrop != null) {
+                    Modifier.drawBackdrop(
+                        backdrop = backdrop,
+                        shape = { shape },
+                        effects = {
+                            vibrancy()
+                            blur(8.dp.toPx())
+                            lens(8.dp.toPx(), 24.dp.toPx())
+                        },
+                        highlight = null,
+                        shadow = null,
+                        innerShadow = null,
+                        onDrawSurface = { drawRect(containerColor) }
+                    )
+                } else {
+                    Modifier.clip(shape).background(containerColor)
+                }
+            )
+            .edgeLight(shape = shape, edgeLight = edgeLight),
+        content = content
+    )
+}
+
+@Composable
 internal fun MiuixMoreButton(
     onClick: () -> Unit
 ) {
-    MiuixIconButton(onClick = onClick, modifier = Modifier.size(52.dp)) {
-        Icon(
-            imageVector = YumerinMoreIcon,
-            contentDescription = "更多设置",
-            tint = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.size(24.dp)
-        )
-    }
+    MiuixGlassIconButton(
+        icon = YumerinMoreIcon,
+        contentDescription = "更多设置",
+        onClick = onClick
+    )
 }
 
 @Composable

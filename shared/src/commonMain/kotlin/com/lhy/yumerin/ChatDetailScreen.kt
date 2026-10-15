@@ -14,6 +14,7 @@ import androidx.compose.ui.draw.*
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.*
 import androidx.compose.ui.layout.*
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.*
@@ -27,6 +28,8 @@ import com.lhy.yumerin.domain.*
 import com.lhy.yumerin.domain.memory.*
 import com.lhy.yumerin.domain.repository.*
 import com.lhy.yumerin.domain.usecase.*
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import top.yukonga.miuix.kmp.basic.TextField as MiuixTextField
@@ -56,8 +59,13 @@ internal fun ChatDetailPage(
 ) {
     val messages by graph.chats.observeMessages(chatId).collectAsState(emptyList())
     val messageScrollState = rememberScrollState()
+    val chatBackdrop = rememberLayerBackdrop()
+    val density = LocalDensity.current
+    var composerSurfaceHeightPx by remember(chatId) { mutableIntStateOf(0) }
+    val composerBottomPadding = with(density) { composerSurfaceHeightPx.toDp() } + 28.dp
     var followNewMessages by remember(chatId) { mutableStateOf(true) }
     var didInitialScroll by remember(chatId) { mutableStateOf(false) }
+    var pendingAutoScroll by remember(chatId) { mutableStateOf(false) }
     val chat = chats.firstOrNull { it.id == chatId }
     val character = characters.firstOrNull { it.id == chat?.characterId }
     val group = groups.firstOrNull { it.id == chat?.groupId }
@@ -94,6 +102,10 @@ internal fun ChatDetailPage(
             messageScrollState.scrollTo(messageScrollState.maxValue)
             didInitialScroll = true
             followNewMessages = true
+        } else if (pendingAutoScroll) {
+            messageScrollState.animateScrollTo(messageScrollState.maxValue)
+            pendingAutoScroll = false
+            followNewMessages = true
         } else if (followNewMessages) {
             messageScrollState.animateScrollTo(messageScrollState.maxValue)
         }
@@ -106,15 +118,23 @@ internal fun ChatDetailPage(
         }
         val text = draft.trim()
         if (text.isEmpty()) return
+        draft = ""
         followNewMessages = true
+        pendingAutoScroll = true
         sending = true
         sendJob = scope.launch {
             try {
                 when (sendMessage(SendChatMessageCommand(chatId, text, settings))) {
                     SendChatMessageResult.MissingModel -> showModelGate = true
-                    SendChatMessageResult.Empty -> Unit
-                    is SendChatMessageResult.Completed -> draft = ""
-                    is SendChatMessageResult.Failed -> draft = text
+                    SendChatMessageResult.Empty -> {
+                        if (draft.isBlank()) draft = text
+                        pendingAutoScroll = false
+                    }
+                    is SendChatMessageResult.Completed -> Unit
+                    is SendChatMessageResult.Failed -> {
+                        if (draft.isBlank()) draft = text
+                        pendingAutoScroll = false
+                    }
                 }
             } finally {
                 sending = false
@@ -126,6 +146,7 @@ internal fun ChatDetailPage(
     fun retryUserMessage(message: ChatMessage) {
         if (sending) return
         followNewMessages = true
+        pendingAutoScroll = true
         sending = true
         sendJob = scope.launch {
             try {
@@ -144,6 +165,7 @@ internal fun ChatDetailPage(
     fun retry(message: ChatMessage) {
         if (sending) return
         followNewMessages = true
+        pendingAutoScroll = true
         sending = true
         sendJob = scope.launch {
             try {
@@ -167,39 +189,53 @@ internal fun ChatDetailPage(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             MiuixBackButton(onClick = onBack)
-            Spacer(Modifier.width(10.dp))
-            Avatar(
-                text = (group?.name ?: character?.name ?: conversationTitle).take(1).ifBlank { "聊" },
-                uri = chat?.avatarUri ?: group?.avatarUri ?: character?.avatarUri,
-                onClick = character?.id?.let { id -> { onOpenCharacterProfile(id) } },
-                contentDescription = when {
-                    group != null -> "群聊头像"
-                    character != null -> "查看${character.name}详情"
-                    else -> "聊天头像"
-                }
-            )
-            Column(
+            MiuixGlassSurface(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(start = 10.dp, end = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                    .height(62.dp),
+                shape = RoundedCornerShape(31.dp)
             ) {
-                Text(
-                    conversationTitle,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    conversationSubtitle,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 11.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(9.dp)
+                ) {
+                    Avatar(
+                        text = (group?.name ?: character?.name ?: conversationTitle).take(1).ifBlank { "聊" },
+                        uri = chat?.avatarUri ?: group?.avatarUri ?: character?.avatarUri,
+                        onClick = character?.id?.let { id -> { onOpenCharacterProfile(id) } },
+                        contentDescription = when {
+                            group != null -> "群聊头像"
+                            character != null -> "查看${character.name}详情"
+                            else -> "聊天头像"
+                        },
+                        size = 40.dp
+                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(1.dp)
+                    ) {
+                        Text(
+                            conversationTitle,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            conversationSubtitle,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
             }
             MiuixMoreButton(onClick = onOpenChatSettings)
         }
@@ -207,95 +243,106 @@ internal fun ChatDetailPage(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
+                .imePadding()
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .verticalScroll(messageScrollState)
-                        .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    messages.forEach { message ->
-                        val isMine = message.senderType == MessageSenderType.USER
-                        val senderCharacter = message.senderId?.let { senderId ->
-                            characters.firstOrNull { it.id == senderId }
-                        }
-                        MessageBubble(
-                            message = message,
-                            isMine = isMine,
-                            avatarText = if (isMine) {
-                                settings.userName.take(1).ifBlank { "Y" }
-                            } else {
-                                message.senderName.take(1).ifBlank { "?" }
-                            },
-                            avatarUri = if (isMine) {
-                                settings.userAvatarUri
-                            } else {
-                                message.senderAvatarUri ?: senderCharacter?.avatarUri
-                            },
-                            onAvatarClick = if (isMine) {
-                                onOpenUserProfile
-                            } else {
-                                message.senderId?.let { senderId ->
-                                    { onOpenCharacterProfile(senderId) }
-                                }
-                            },
-                            onRecall = if (message.usedMemoryIds.isEmpty()) null else {
-                                {
-                                    scope.launch {
-                                        val memories = character?.let { graph.memories.observeMemories(it.id).first() }.orEmpty()
-                                        recallText = message.usedMemoryIds.mapNotNull { id -> memories.firstOrNull { it.id == id }?.content }
-                                            .joinToString("\n")
-                                            .ifBlank { "本次回复没有可显示的记忆内容。" }
-                                    }
-                                }
-                            },
-                            onRetry = if (message.responseState == com.lhy.yumerin.core.model.AiResponseState.RETRYABLE ||
-                                message.responseState == com.lhy.yumerin.core.model.AiResponseState.FAILED ||
-                                message.responseState == com.lhy.yumerin.core.model.AiResponseState.STOPPED
-                            ) { { retry(message) } } else null,
-                            onRetryUser = if (message.senderType == MessageSenderType.USER && message.deliveryState != com.lhy.yumerin.core.model.MessageDeliveryState.SENT) {
-                                { retryUserMessage(message) }
-                            } else null
-                        )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .layerBackdrop(chatBackdrop)
+                    .verticalScroll(messageScrollState)
+                    .padding(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = 10.dp,
+                        bottom = composerBottomPadding
+                    ),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                messages.forEach { message ->
+                    val isMine = message.senderType == MessageSenderType.USER
+                    val senderCharacter = message.senderId?.let { senderId ->
+                        characters.firstOrNull { it.id == senderId }
                     }
-                    if (messages.isEmpty()) {
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 20.dp),
-                            shape = RoundedCornerShape(20.dp),
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.dp,
-                                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f)
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
-                                verticalArrangement = Arrangement.spacedBy(5.dp)
-                            ) {
-                                Text("开始对话", style = MaterialTheme.typography.titleMedium)
-                                Text(
-                                    "发送第一条消息，让对话从这里开始。",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                    MessageBubble(
+                        message = message,
+                        isMine = isMine,
+                        avatarText = if (isMine) {
+                            settings.userName.take(1).ifBlank { "Y" }
+                        } else {
+                            message.senderName.take(1).ifBlank { "?" }
+                        },
+                        avatarUri = if (isMine) {
+                            settings.userAvatarUri
+                        } else if (senderCharacter != null) {
+                            senderCharacter.avatarUri
+                        } else {
+                            message.senderAvatarUri
+                        },
+                        onAvatarClick = if (isMine) {
+                            onOpenUserProfile
+                        } else {
+                            message.senderId?.let { senderId ->
+                                { onOpenCharacterProfile(senderId) }
                             }
+                        },
+                        onRecall = if (message.usedMemoryIds.isEmpty()) null else {
+                            {
+                                scope.launch {
+                                    val memories = character?.let { graph.memories.observeMemories(it.id).first() }.orEmpty()
+                                    recallText = message.usedMemoryIds.mapNotNull { id -> memories.firstOrNull { it.id == id }?.content }
+                                        .joinToString("\n")
+                                        .ifBlank { "本次回复没有可显示的记忆内容。" }
+                                }
+                            }
+                        },
+                        onRetry = if (message.responseState == com.lhy.yumerin.core.model.AiResponseState.RETRYABLE ||
+                            message.responseState == com.lhy.yumerin.core.model.AiResponseState.FAILED ||
+                            message.responseState == com.lhy.yumerin.core.model.AiResponseState.STOPPED
+                        ) { { retry(message) } } else null,
+                        onRetryUser = if (message.senderType == MessageSenderType.USER && message.deliveryState != com.lhy.yumerin.core.model.MessageDeliveryState.SENT) {
+                            { retryUserMessage(message) }
+                        } else null
+                    )
+                }
+                if (messages.isEmpty()) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 20.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Text("开始对话", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "发送第一条消息，让对话从这里开始。",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
+            }
 
             Box(
                 modifier = Modifier
+                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .imePadding()
                     .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
-                MiuixCardSurface(
-                    modifier = Modifier.fillMaxWidth(),
+                MiuixGlassSurface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onSizeChanged { composerSurfaceHeightPx = it.height },
+                    shape = RoundedCornerShape(28.dp),
+                    backdrop = chatBackdrop
                 ) {
                     Column(
                         modifier = Modifier
@@ -385,14 +432,13 @@ internal fun ChatDetailPage(
                                 )
                             )
                             MiuixSendButton(
-                                                                sending = sending,
+                                sending = sending,
                                 enabled = sending || draft.isNotBlank(),
                                 onClick = ::send
                             )
                         }
                     }
                 }
-            }
             }
         }
     }
@@ -437,102 +483,110 @@ private fun MessageBubble(
     val isSystem = message.senderType == MessageSenderType.SYSTEM
     val bubbleShape = when {
         isSystem -> RoundedCornerShape(16.dp)
-        isMine -> RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 6.dp)
-        else -> RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 6.dp, bottomEnd = 20.dp)
+        isMine -> RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 4.dp)
+        else -> RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 4.dp, bottomEnd = 20.dp)
     }
     val bubbleColor = when {
         isSystem -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
         isMine -> MaterialTheme.colorScheme.primaryContainer
-        else -> MaterialTheme.colorScheme.surface.copy(alpha = 0.88f)
+        else -> MaterialTheme.colorScheme.secondaryContainer
     }
     val bubbleContentColor = when {
         isSystem -> MaterialTheme.colorScheme.onSurfaceVariant
         isMine -> MaterialTheme.colorScheme.onPrimaryContainer
         else -> MaterialTheme.colorScheme.onSurface
     }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = when {
-            isSystem -> Arrangement.Center
-            isMine -> Arrangement.End
-            else -> Arrangement.Start
-        },
-        verticalAlignment = Alignment.Top
-    ) {
-        if (!isMine && !isSystem) {
-            Avatar(
-                text = avatarText,
-                uri = avatarUri,
-                onClick = onAvatarClick,
-                contentDescription = "查看${message.senderName}详情"
-            )
-            Spacer(Modifier.width(8.dp))
-        }
-        Column(
-            modifier = Modifier
-                .fillMaxWidth(if (isSystem) 0.92f else 0.75f)
-                .widthIn(max = 340.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val maxBubbleWidth = maxWidth * 0.78f
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = when {
+                isSystem -> Arrangement.Center
+                isMine -> Arrangement.End
+                else -> Arrangement.Start
+            },
+            verticalAlignment = Alignment.Top
         ) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = bubbleShape,
-                color = bubbleColor,
-                contentColor = bubbleContentColor,
-                border = androidx.compose.foundation.BorderStroke(
-                    1.dp,
-                    if (isMine) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
-                    else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f)
+            if (!isMine && !isSystem) {
+                Avatar(
+                    text = avatarText,
+                    uri = avatarUri,
+                    onClick = onAvatarClick,
+                    contentDescription = "查看${message.senderName}详情"
                 )
+                Spacer(Modifier.width(8.dp))
+            }
+            Column(
+                modifier = if (isSystem) {
+                    Modifier.fillMaxWidth(0.92f)
+                } else {
+                    Modifier.widthIn(max = maxBubbleWidth)
+                },
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    if (!isMine && !isSystem) {
-                        Text(
-                            message.senderName,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    Text(
-                        text = message.text.ifBlank {
-                            when (message.responseState) {
-                                com.lhy.yumerin.core.model.AiResponseState.GENERATING -> "正在输入…"
-                                com.lhy.yumerin.core.model.AiResponseState.STOPPED -> "已停止生成"
-                                else -> ""
-                            }
-                        },
-                        style = MaterialTheme.typography.bodyLarge
+                Surface(
+                    modifier = if (isSystem) Modifier.fillMaxWidth() else Modifier,
+                    shape = bubbleShape,
+                    color = bubbleColor,
+                    contentColor = bubbleContentColor,
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        when {
+                            isMine -> MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
+                            isSystem -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f)
+                            else -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.24f)
+                        }
                     )
-                    message.errorMessage?.let {
-                        Text("状态：$it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                    }
-                    if (isMine && message.deliveryState != com.lhy.yumerin.core.model.MessageDeliveryState.SENT) {
-                        Text("消息尚未成功处理", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
-                    }
-                    if (message.responseState == com.lhy.yumerin.core.model.AiResponseState.RETRYABLE) {
-                        Text("可重试此回复", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
-                    }
-                    if (onRetry != null || onRetryUser != null || onRecall != null) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                            onRetry?.let { TextButton(onClick = it) { Text("重试") } }
-                            onRetryUser?.let { TextButton(onClick = it) { Text("重试发送") } }
-                            onRecall?.let { TextButton(onClick = it) { Text("查看召回记忆") } }
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        if (!isMine && !isSystem) {
+                            Text(
+                                message.senderName,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Text(
+                            text = message.text.ifBlank {
+                                when (message.responseState) {
+                                    com.lhy.yumerin.core.model.AiResponseState.GENERATING -> "正在输入…"
+                                    com.lhy.yumerin.core.model.AiResponseState.STOPPED -> "已停止生成"
+                                    else -> ""
+                                }
+                            },
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        message.errorMessage?.let {
+                            Text("状态：$it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                        }
+                        if (isMine && message.deliveryState != com.lhy.yumerin.core.model.MessageDeliveryState.SENT) {
+                            Text("消息尚未成功处理", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                        }
+                        if (message.responseState == com.lhy.yumerin.core.model.AiResponseState.RETRYABLE) {
+                            Text("可重试此回复", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                        }
+                        if (onRetry != null || onRetryUser != null || onRecall != null) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                onRetry?.let { TextButton(onClick = it) { Text("重试") } }
+                                onRetryUser?.let { TextButton(onClick = it) { Text("重试发送") } }
+                                onRecall?.let { TextButton(onClick = it) { Text("查看召回记忆") } }
+                            }
                         }
                     }
                 }
             }
-        }
-        if (isMine && !isSystem) {
-            Spacer(Modifier.width(8.dp))
-            Avatar(
-                text = avatarText,
-                uri = avatarUri,
-                onClick = onAvatarClick,
-                contentDescription = "查看用户详情"
-            )
+            if (isMine && !isSystem) {
+                Spacer(Modifier.width(8.dp))
+                Avatar(
+                    text = avatarText,
+                    uri = avatarUri,
+                    onClick = onAvatarClick,
+                    contentDescription = "查看用户详情"
+                )
+            }
         }
     }
 }
