@@ -95,4 +95,4 @@ Debug APK 输出到 `androidApp/build/outputs/apk/debug/androidApp-debug.apk`。
 
 ## 许可证
 
-当前仓库尚未添加项目级 `LICENSE` 文件。依赖组件各自的许可证信息在应用的“关于”页面中列出；如需公开发布或允许他人复用代码，请先确定并添加项目许可证。
+本项目采用 MIT License，详见 [`LICENSE`](LICENSE)。依赖组件各自的许可证信息在应用的“关于”页面中列出。

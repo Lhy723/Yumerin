@@ -16,6 +16,7 @@ xcuserdata/
 # Local Android SDK and signing configuration
 local.properties
 signing.properties
+.release-signing/
 *.jks
 *.keystore
 *.p12

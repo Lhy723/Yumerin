@@ -6,17 +6,23 @@ Android 应用版本定义在 `androidApp/build.gradle.kts`。每次发布都要
 
 - `.github/workflows/android-ci.yml` 在面向 `main` 的 Pull Request、推送到 `main` 和手动运行时，构建 Android Debug、JS 和 Wasm 目标。
 - `.github/workflows/android-release.yml` 响应 `v*` 标签，检查标签版本与 `versionName` 一致，构建 arm64 Release APK、验证签名，并创建 GitHub Release。
-- 仓库需要已有的 `LICENSE` 文件和现有签名密钥的 Actions secrets；任一项缺失时，发布工作流都会失败。
+- 仓库必须包含 `LICENSE`，并配置下方 Actions secrets；任一项缺失时，发布工作流都会失败。
 
 ## 配置签名
 
-Release 必须使用这个应用既有的签名密钥，保证已安装版本可以升级。不要把密钥或密码提交到 Git，也不要为发布流程随意生成替代密钥；更换签名身份会使现有安装无法直接升级。
+所有公开 Release 必须持续使用同一签名密钥，否则已安装的 Release 版本无法直接升级。不要把密钥或密码提交到 Git。
+
+`v1.1.0` 是首个公开 GitHub Release，并使用新生成的 Release 密钥。本地 `1.0` APK 由 Android Debug 密钥签名，因此 Android 不会将这次 Release 安装为它的原地更新；安装前需要卸载 Debug 包。后续 Release 必须继续使用此处配置的密钥。
+
+当前 Release 证书 SHA-256 指纹：`3ae903003d670543b111da80097d860acaf84c041a976fe036aa733c9f23a6e9`。
+
+本机的备份保存在仓库根目录 `.release-signing/`，该目录已被 Git 忽略。请将 keystore 和 `credentials.txt` 复制到受控备份位置；GitHub Actions secrets 不能读取回明文，丢失本地备份后无法恢复私钥。
 
 在仓库 **Settings → Secrets and variables → Actions** 中添加以下 Repository secrets：
 
 | Secret | 内容 |
 | --- | --- |
-| `YUMERIN_RELEASE_KEYSTORE_BASE64` | 既有 `.jks` / `.keystore` 文件的 Base64 内容 |
+| `YUMERIN_RELEASE_KEYSTORE_BASE64` | `.jks` / `.keystore` 文件的 Base64 内容 |
 | `YUMERIN_RELEASE_KEYSTORE_PASSWORD` | Key store 密码 |
 | `YUMERIN_RELEASE_KEY_ALIAS` | Key alias |
 | `YUMERIN_RELEASE_KEY_PASSWORD` | Key 密码 |
@@ -29,4 +35,4 @@ Release 必须使用这个应用既有的签名密钥，保证已安装版本可
 2. 用与 `versionName` 完全相同的版本创建标签，例如 `v1.1.0`。
 3. 将标签推送到 `origin`。Release 工作流会创建 GitHub Release 并附上签名的 arm64 APK。
 
-当前仓库尚未添加项目级许可证。公开 GitHub Release 前，请由项目所有者确定并添加许可证；不要由发布工作流替项目选择许可证。
+仓库采用 MIT License，许可证全文见根目录 `LICENSE`。

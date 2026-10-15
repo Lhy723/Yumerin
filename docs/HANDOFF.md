@@ -73,18 +73,18 @@ Debug APK：`androidApp/build/outputs/apk/debug/androidApp-debug.apk`。Web 也�
 - Android 17 / API 37 目前通过 Canary SDK channel 提供；GitHub Actions 使用 Android CLI 的 `--canary` 安装平台和 Build Tools。
 - GitHub Dependabot vulnerability alerts 已启用；Gradle 与 GitHub Actions 的版本更新按周检查。GitHub 的 npm 安全更新因 `kotlin-js-store` 只提交 Gradle 管理的 `yarn.lock`、没有 `package.json` 而无法运行，目前保持关闭；告警仍需人工通过 Gradle/Kotlin 工具链更新处理。
 - 主要 UI 正在使用 Compose、Material 3、Miuix 和 Backdrop 组件；聊天列表/详情、液态导航、角色列表/编辑、个人资料和设置页已有 HyperOS/Liquid Glass 方向的整理。
-- 当前任务未运行自动化测试；需要发布前运行上面的 host tests，并对 Android 设备权限、后台限制和数据迁移做设备验证。
+- 2026-10-15 `:shared:testAndroidHostTest` 通过；本机 `:androidApp:assembleRelease` 也成功，arm64 APK 的版本信息和签名已核验。设备权限、后台限制和数据迁移仍需单独做设备验证。
 - Web/Wasm 仍是内存预览，不是持久化 Web 产品。
-- 仓库尚无项目级 `LICENSE` 文件。公开分发或允许第三方复用前，项目所有者需要确定许可证并加入文件。
+- 仓库采用 MIT License，全文见根目录 [`LICENSE`](../LICENSE)。
 
 ## 发布前检查
 
-1. 确定仓库可见性和项目许可证。
+1. 核实仓库可见性和已选定的项目许可证。
 2. 验证数据库迁移、导入冲突、数据清除、Keystore 凭据与后台权限流程。
-3. 配置独立的 Release 签名；签名密钥、凭据和本地模型文件不得提交。
+3. 使用固定的 Release 签名密钥；签名密钥、凭据和本地模型文件不得提交，并保留受控备份。
 4. 根据目标市场补齐隐私说明、年龄确认说明和发布渠道配置。
 
-发布版本和 GitHub Actions 流程见 [`RELEASING.md`](RELEASING.md)。Release APK 使用项目既有签名密钥；如果该密钥未配置到仓库 Actions Secrets，发布工作流会失败关闭。
+发布版本和 GitHub Actions 流程见 [`RELEASING.md`](RELEASING.md)。`v1.1.0` 首次公开发布使用新生成的签名密钥；后续 Release 必须继续使用它。如果密钥未配置到仓库 Actions Secrets，发布工作流会失败关闭。本地 1.0 APK 是 Debug 签名，不能直接升级为此 Release。
 
 ## 交接入口
 
