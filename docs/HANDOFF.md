@@ -1,6 +1,6 @@
 # Yumerin 项目交接
 
-更新日期：2026-10-11
+更新日期：2026-10-15
 
 ## 项目概况
 
@@ -69,6 +69,7 @@ Debug APK：`androidApp/build/outputs/apk/debug/androidApp-debug.apk`。Web 也�
 ## 当前实现状态
 
 - Android Debug APK 最近一次 `:androidApp:assembleDebug` 构建成功。
+- 2026-10-15 本机 `:androidApp:assembleDebug`、`:shared:compileKotlinJs` 和 `:shared:compileKotlinWasmJs` 均构建成功；JS/Wasm 编译提示 Compose Multiplatform 插件声明为 1.11.1、依赖解析到 1.12.0。发布前需评估并对齐 Miuix 0.9.4 所用的 Compose 工具链。
 - 主要 UI 正在使用 Compose、Material 3、Miuix 和 Backdrop 组件；聊天列表/详情、液态导航、角色列表/编辑、个人资料和设置页已有 HyperOS/Liquid Glass 方向的整理。
 - 当前任务未运行自动化测试；需要发布前运行上面的 host tests，并对 Android 设备权限、后台限制和数据迁移做设备验证。
 - Web/Wasm 仍是内存预览，不是持久化 Web 产品。
@@ -80,6 +81,8 @@ Debug APK：`androidApp/build/outputs/apk/debug/androidApp-debug.apk`。Web 也�
 2. 验证数据库迁移、导入冲突、数据清除、Keystore 凭据与后台权限流程。
 3. 配置独立的 Release 签名；签名密钥、凭据和本地模型文件不得提交。
 4. 根据目标市场补齐隐私说明、年龄确认说明和发布渠道配置。
+
+发布版本和 GitHub Actions 流程见 [`RELEASING.md`](RELEASING.md)。Release APK 使用项目既有签名密钥；如果该密钥未配置到仓库 Actions Secrets，发布工作流会失败关闭。
 
 ## 交接入口
 

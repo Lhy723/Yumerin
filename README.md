@@ -11,8 +11,24 @@ Yumerin 是一款本地优先的 AI 情感陪伴应用。用户可以创建多�
 - 每个角色隔离的长期记忆，支持查看、编辑、固定、审核和删除
 - 用户自带的 OpenAI-compatible 模型配置，以及 Android LiteRT-LM 本地模型
 - 主动消息计划、静默时段和后台陪伴控制
+- 持续的角色关系状态，以及可暂停、继续和取消的委托目标
 - 本地数据导出、导入预览、冲突选择和全部清除
 - Android 液态玻璃界面与 Compose Multiplatform 共享 UI
+
+## 页面展示
+
+以下为 Android 应用页面：
+
+<table>
+  <tr>
+    <td align="center"><strong>聊天列表</strong><br><img src="docs/images/readme/chat-list.png" alt="聊天列表页面" width="280" /></td>
+    <td align="center"><strong>私聊会话</strong><br><img src="docs/images/readme/chat-detail.png" alt="私聊会话页面" width="280" /></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>角色管理</strong><br><img src="docs/images/readme/characters.png" alt="角色管理页面" width="280" /></td>
+    <td align="center"><strong>个人资料</strong><br><img src="docs/images/readme/profile.png" alt="个人资料页面" width="280" /></td>
+  </tr>
+</table>
 
 ## 项目结构
 
@@ -27,6 +43,10 @@ Yumerin 是一款本地优先的 AI 情感陪伴应用。用户可以创建多�
 | `CONTEXT.md` | 产品语言、领域概念与安全边界 |
 
 更完整的技术交接和开发说明见 [`docs/HANDOFF.md`](docs/HANDOFF.md)，文档目录见 [`docs/README.md`](docs/README.md)。
+
+## CI 与发布
+
+GitHub Actions 会构建 Android Debug、JS 和 Wasm 目标。Android 版本号、更新日志和签名发布步骤见 [`docs/RELEASING.md`](docs/RELEASING.md) 与 [`CHANGELOG.md`](CHANGELOG.md)。
 
 ## 开发环境
 

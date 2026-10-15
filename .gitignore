@@ -38,3 +38,4 @@ google-services.json
 
 # JavaScript package installations
 node_modules/
+/kotlin-js-store/package-lock.json

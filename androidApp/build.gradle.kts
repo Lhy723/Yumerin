@@ -2,6 +2,13 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 val phoneOptimizedApk =
     providers.gradleProperty("yumerin.phoneOptimizedApk").orNull == "true"
+val releaseStoreFile = providers.environmentVariable("YUMERIN_RELEASE_STORE_FILE").orNull
+val releaseStorePassword = providers.environmentVariable("YUMERIN_RELEASE_STORE_PASSWORD").orNull
+val releaseKeyAlias = providers.environmentVariable("YUMERIN_RELEASE_KEY_ALIAS").orNull
+val releaseKeyPassword = providers.environmentVariable("YUMERIN_RELEASE_KEY_PASSWORD").orNull
+val releaseSigningConfigured =
+    listOf(releaseStoreFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword)
+        .all { !it.isNullOrBlank() } && releaseStoreFile?.let { file(it).isFile } == true
 
 plugins {
     alias(libs.plugins.androidApplication)
@@ -31,11 +38,21 @@ android {
         applicationId = "com.lhy.yumerin"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1.0"
         if (phoneOptimizedApk) {
             ndk {
                 abiFilters.add("arm64-v8a")
+            }
+        }
+    }
+    if (releaseSigningConfigured) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(requireNotNull(releaseStoreFile))
+                storePassword = requireNotNull(releaseStorePassword)
+                keyAlias = requireNotNull(releaseKeyAlias)
+                keyPassword = requireNotNull(releaseKeyPassword)
             }
         }
     }
@@ -66,6 +83,9 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             buildConfigField("boolean", "SKIP_ADULT_CONFIRMATION", "false")
+            if (releaseSigningConfigured) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
