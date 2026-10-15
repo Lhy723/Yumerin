@@ -35,9 +35,6 @@ import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
-import com.kyant.backdrop.highlight.Highlight
-import com.kyant.backdrop.shadow.InnerShadow
-import com.kyant.backdrop.shadow.Shadow
 import top.yukonga.miuix.kmp.basic.IconButton as MiuixIconButton
 import top.yukonga.miuix.kmp.preference.ArrowPreference as MiuixArrowPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference as MiuixSwitchPreference
@@ -80,36 +77,30 @@ internal fun MiuixGlassIconButton(
 ) {
     val backdrop = LocalGlassButtonBackdrop.current
     val isLightTheme = MaterialTheme.colorScheme.surface.luminance() > 0.5f
-    val accentColor = MaterialTheme.colorScheme.primary
-    val surfaceColor = MaterialTheme.colorScheme.surface.copy(
-        alpha = if (isLightTheme) 0.36f else 0.26f
-    )
-    val borderBrush = Brush.verticalGradient(
-        colors = if (isLightTheme) {
-            listOf(Color.White.copy(alpha = 0.88f), accentColor.copy(alpha = 0.24f))
-        } else {
-            listOf(Color.White.copy(alpha = 0.42f), accentColor.copy(alpha = 0.34f))
-        }
+    val containerColor = if (isLightTheme) {
+        Color(0xFFFAFAFA).copy(alpha = 0.76f)
+    } else {
+        Color(0xFF242424).copy(alpha = 0.84f)
+    }
+    val edgeLight = EdgeLight(
+        color = Color.White.copy(alpha = if (isLightTheme) 0.6f else 0.2f),
+        width = if (isLightTheme) 0.24.dp else 0.34.dp,
+        blurRadius = 0.4.dp
     )
     Box(
         modifier = Modifier
-            .size(52.dp)
-            .drawBehind {
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colorStops = arrayOf(
-                            0f to Color.Transparent,
-                            0.72f to accentColor.copy(alpha = if (isLightTheme) 0.10f else 0.14f),
-                            1f to accentColor.copy(alpha = if (isLightTheme) 0.035f else 0.06f)
-                        ),
-                        radius = size.minDimension / 2f
-                    )
-                )
-            },
+            .size(52.dp),
         contentAlignment = Alignment.Center
     ) {
         val glassModifier = Modifier
             .size(48.dp)
+            .shadow(
+                elevation = 4.dp,
+                shape = CircleShape,
+                clip = false,
+                ambientColor = Color.Black.copy(alpha = 0.08f),
+                spotColor = Color.Black.copy(alpha = 0.08f)
+            )
             .then(
                 if (backdrop != null) {
                     Modifier.drawBackdrop(
@@ -117,26 +108,23 @@ internal fun MiuixGlassIconButton(
                         shape = { CircleShape },
                         effects = {
                             vibrancy()
-                            blur(12.dp.toPx())
-                            lens(14.dp.toPx(), 18.dp.toPx())
+                            blur(8.dp.toPx())
+                            lens(8.dp.toPx(), 24.dp.toPx())
                         },
-                        highlight = {
-                            Highlight.Default.copy(alpha = if (isLightTheme) 0.46f else 0.30f)
-                        },
-                        shadow = { Shadow(alpha = 0.14f) },
-                        innerShadow = { InnerShadow(radius = 4.dp, alpha = 0.10f) },
+                        highlight = null,
+                        shadow = null,
+                        innerShadow = null,
                         onDrawSurface = {
-                            drawRect(surfaceColor)
-                            drawRect(accentColor.copy(alpha = if (isLightTheme) 0.035f else 0.12f))
+                            drawRect(containerColor)
                         }
                     )
                 } else {
                     Modifier
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.94f))
+                        .background(containerColor)
                 }
             )
-            .border(0.8.dp, borderBrush, CircleShape)
+            .edgeLight(shape = CircleShape, edgeLight = edgeLight)
 
         MiuixIconButton(onClick = onClick, modifier = glassModifier, enabled = enabled) {
             Icon(

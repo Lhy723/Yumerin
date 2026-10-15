@@ -18,8 +18,13 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.IOException
+import java.net.ConnectException
 import java.net.HttpURLConnection
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import java.net.URL
+import javax.net.ssl.SSLException
 
 class AndroidAgentService(
     private val credentials: CredentialStore,
@@ -237,33 +242,55 @@ class AndroidAgentService(
             if (code !in 200..299) {
                 val errorBody = connection.errorStream?.bufferedReader()?.use { it.readText() }
                     .orEmpty()
-                    .replace(apiKey, "[REDACTED]")
                 return@withContext AgentReply(
-                    text = "模型请求失败（HTTP $code）。" + errorBody.take(160).let { if (it.isBlank()) "" else " $it" },
+                    text = formatHttpFailure(code, errorBody, apiKey),
                     modelProfileId = request.model.id,
                     statusMessage = "remote-http-$code"
                 )
             }
+            var finishReason: String? = null
             val content = if (request.streaming) {
                 val reader = connection.inputStream.bufferedReader()
                 var accumulated = ""
+                var eventName: String? = null
                 try {
                     while (true) {
                         val line = reader.readLine() ?: break
+                        if (line.startsWith("event:")) {
+                            eventName = line.substringAfter(':').trim()
+                            continue
+                        }
+                        if (line.isBlank()) {
+                            eventName = null
+                            continue
+                        }
+                        if (!line.startsWith("data:")) continue
                         val data = line.removePrefix("data:").trim()
-                        if (data.isBlank() || data == "[DONE]") continue
-                        val delta = runCatching {
-                            JSONObject(data)
-                                .optJSONArray("choices")
-                                ?.optJSONObject(0)
-                                ?.optJSONObject("delta")
-                                ?.optString("content", "")
-                                .orEmpty()
-                        }.getOrDefault("")
+                        if (data.isBlank()) continue
+                        if (data == "[DONE]") break
+
+                        streamErrorMessage(data, eventName, apiKey)?.let { detail ->
+                            return@withContext AgentReply(
+                                text = "模型接口返回错误：$detail",
+                                modelProfileId = request.model.id,
+                                statusMessage = "remote-exception"
+                            )
+                        }
+
+                        val choice = runCatching {
+                            JSONObject(data).optJSONArray("choices")?.optJSONObject(0)
+                        }.getOrNull()
+                        val delta = choice?.optJSONObject("delta")?.optString("content", "").orEmpty()
                         if (delta.isNotEmpty()) {
                             accumulated += delta
                             onAccumulatedText(accumulated)
                         }
+                        val rawFinishReason = choice?.opt("finish_reason")
+                        finishReason = rawFinishReason
+                            ?.takeUnless { it == JSONObject.NULL }
+                            ?.toString()
+                            ?.takeIf { it.isNotBlank() && it != "null" }
+                        if (finishReason != null) break
                     }
                 } finally {
                     reader.close()
@@ -280,7 +307,7 @@ class AndroidAgentService(
                     .also { if (it.isNotBlank()) onAccumulatedText(it) }
             }
             if (content.isBlank()) return@withContext AgentReply(
-                text = "模型返回了空消息。",
+                text = if (finishReason == "content_filter") "模型服务因内容过滤未能返回回复。" else "模型返回了空消息。",
                 modelProfileId = request.model.id,
                 statusMessage = "remote-empty"
             )
@@ -293,7 +320,7 @@ class AndroidAgentService(
             throw error
         } catch (error: Exception) {
             AgentReply(
-                text = "模型请求失败：${error.message ?: "网络或服务不可用"}",
+                text = "模型请求失败：${formatProviderException(error, apiKey)}",
                 modelProfileId = request.model.id,
                 statusMessage = "remote-exception"
             )
@@ -384,10 +411,10 @@ class AndroidAgentService(
             val code = connection.responseCode
             if (code !in 200..299) {
                 val errorBody = connection.errorStream?.bufferedReader()?.use { it.readText() }
-                    .orEmpty().replace(apiKey, "[REDACTED]")
+                    .orEmpty()
                 return@withContext AgentModelStep.FinalResponse(
                     AgentReply(
-                        text = "模型请求失败（HTTP $code）。" + errorBody.take(160).let { if (it.isBlank()) "" else " $it" },
+                        text = formatHttpFailure(code, errorBody, apiKey),
                         modelProfileId = request.model.id,
                         statusMessage = "remote-http-$code"
                     )
@@ -443,7 +470,7 @@ class AndroidAgentService(
         } catch (error: Exception) {
             AgentModelStep.FinalResponse(
                 AgentReply(
-                    text = "模型请求失败：${error.message ?: "网络或服务不可用"}",
+                    text = "模型请求失败：${formatProviderException(error, apiKey)}",
                     modelProfileId = request.model.id,
                     statusMessage = "remote-exception"
                 )
@@ -451,5 +478,71 @@ class AndroidAgentService(
         } finally {
             connection.disconnect()
         }
+    }
+
+    private fun formatHttpFailure(code: Int, body: String, apiKey: String): String {
+        val detail = extractProviderErrorMessage(body, apiKey)
+            ?: sanitizeErrorText(body, apiKey)
+        return if (detail.isBlank()) {
+            "模型请求失败（HTTP $code）：服务端没有提供错误详情。"
+        } else {
+            "模型请求失败（HTTP $code）：$detail"
+        }
+    }
+
+    private fun streamErrorMessage(data: String, eventName: String?, apiKey: String): String? {
+        extractProviderErrorMessage(data, apiKey)?.let { return it }
+        if (eventName?.equals("error", ignoreCase = true) != true) return null
+
+        val safeData = sanitizeErrorText(data, apiKey)
+        val payload = runCatching { JSONObject(safeData) }.getOrNull()
+        return firstNonBlank(
+            payload?.optString("message").orEmpty(),
+            payload?.optString("detail").orEmpty(),
+            safeData
+        )
+    }
+
+    private fun extractProviderErrorMessage(body: String, apiKey: String): String? {
+        val safeBody = sanitizeErrorText(body, apiKey)
+        val payload = runCatching { JSONObject(safeBody) }.getOrNull() ?: return null
+        val error = payload.opt("error")
+        if (error == null || error == JSONObject.NULL) return null
+
+        val detail = when (error) {
+            is JSONObject -> firstNonBlank(
+                error.optString("message"),
+                error.optString("detail"),
+                error.optString("type"),
+                error.optString("code")
+            )
+            is String -> error
+            else -> error.toString()
+        }
+        return detail?.let { sanitizeErrorText(it, apiKey) }
+    }
+
+    private fun firstNonBlank(vararg values: String): String? =
+        values.firstOrNull { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+
+    private fun sanitizeErrorText(value: String, apiKey: String): String = value
+        .let { if (apiKey.isNotBlank()) it.replace(apiKey, "[REDACTED]") else it }
+        .replace(Regex("\\s+"), " ")
+        .trim()
+        .take(MAX_PROVIDER_ERROR_CHARS)
+
+    private fun formatProviderException(error: Exception, apiKey: String): String = when (error) {
+        is SocketTimeoutException -> "连接模型服务超时，请检查网络或服务状态。"
+        is UnknownHostException -> "无法解析模型服务地址，请检查 Base URL 和网络。"
+        is ConnectException -> "无法连接模型服务，请检查服务状态和 Base URL。"
+        is SSLException -> "与模型服务建立 TLS 安全连接失败，请检查 HTTPS 或证书配置。"
+        is IOException -> sanitizeErrorText(error.message.orEmpty(), apiKey)
+            .ifBlank { "网络连接中断，请检查网络或模型服务状态。" }
+        else -> sanitizeErrorText(error.message.orEmpty(), apiKey)
+            .ifBlank { "网络或模型服务不可用。" }
+    }
+
+    private companion object {
+        const val MAX_PROVIDER_ERROR_CHARS = 500
     }
 }

@@ -29,11 +29,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -42,7 +40,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
@@ -86,7 +83,6 @@ internal fun MiuixFloatingBottomBar(
     val latestSelectedIndex = rememberUpdatedState(selectedIndex)
     val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
     val contentTint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-    val captureTint = if (isLightTheme) Color.Black else Color.White
     val trackColor = if (isLightTheme) {
         Color(0xFFFAFAFA).copy(alpha = 0.6f)
     } else {
@@ -107,9 +103,8 @@ internal fun MiuixFloatingBottomBar(
             onDrag = { _, _ -> }
         )
     }
-    val tabsBackdrop = rememberLayerBackdrop()
     val glowBackdrop = rememberLayerBackdrop()
-    val combinedBackdrop = rememberCombinedBackdrop(backdrop, tabsBackdrop, glowBackdrop)
+    val combinedBackdrop = rememberCombinedBackdrop(backdrop, glowBackdrop)
     val pressProgress = selectorAnimation.pressProgress
     val viewConfiguration = LocalViewConfiguration.current
     val density = LocalDensity.current
@@ -193,65 +188,6 @@ internal fun MiuixFloatingBottomBar(
                     .edgeLight(Capsule(), edgeLight)
             )
 
-            NavigationTabsContent(
-                selectedPage = selectedPage,
-                tint = contentTint,
-                onPageSelected = onPageSelected,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        translationX = panelOffset
-                        val scale = lerp(1f, 1f + 16.dp.toPx() / size.width, pressProgress)
-                        scaleX = scale
-                        scaleY = scale
-                    }
-                    .padding(4.dp)
-            )
-
-            // A separate transparent export preserves the icon and label pixels for the
-            // moving lens. This keeps the selected capsule optically connected to the tabs.
-            Row(
-                modifier = Modifier
-                    .clearAndSetSemantics { }
-                    .alpha(0f)
-                    .layerBackdrop(tabsBackdrop)
-                    .graphicsLayer {
-                        translationX = panelOffset
-                        val scale = lerp(1f, 1.2f, pressProgress)
-                        scaleX = scale
-                        scaleY = scale
-                    }
-                    .drawBackdrop(
-                        backdrop = backdrop,
-                        shape = { Capsule() },
-                        effects = {
-                            vibrancy()
-                            blur(8.dp.toPx())
-                            lens(
-                                24.dp.toPx() * pressProgress,
-                                24.dp.toPx() * pressProgress
-                            )
-                        },
-                        highlight = {
-                            Highlight.Default.copy(alpha = pressProgress)
-                        },
-                        onDrawSurface = { drawRect(trackColor) }
-                    )
-                    .then(interactiveHighlight.modifier)
-                    .fillMaxSize()
-                    .padding(4.dp)
-                    .graphicsLayer(colorFilter = ColorFilter.tint(captureTint)),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                NavigationTabsContent(
-                    selectedPage = selectedPage,
-                    tint = contentTint,
-                    onPageSelected = {},
-                    modifier = Modifier.fillMaxSize(),
-                    captureOnly = true
-                )
-            }
-
             Box(
                 Modifier
                     .fillMaxSize()
@@ -311,6 +247,16 @@ internal fun MiuixFloatingBottomBar(
                             drawRect(Color.Black.copy(alpha = 0.035f * pressProgress))
                         }
                     )
+            )
+
+            NavigationTabsContent(
+                selectedPage = selectedPage,
+                tint = contentTint,
+                onPageSelected = onPageSelected,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { translationX = panelOffset }
+                    .padding(4.dp)
             )
 
             Box(
@@ -393,8 +339,7 @@ private fun NavigationTabsContent(
     selectedPage: AppPage,
     tint: Color,
     onPageSelected: (AppPage) -> Unit,
-    modifier: Modifier = Modifier,
-    captureOnly: Boolean = false
+    modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier,
@@ -402,10 +347,8 @@ private fun NavigationTabsContent(
     ) {
         AppPage.entries.forEach { page ->
             val selected = selectedPage == page
-            val itemModifier = if (captureOnly) {
-                Modifier
-            } else {
-                Modifier
+            Column(
+                modifier = Modifier
                     .clip(Capsule())
                     .semantics(mergeDescendants = true) {
                         contentDescription = page.label
@@ -416,9 +359,6 @@ private fun NavigationTabsContent(
                             true
                         }
                     }
-            }
-            Column(
-                modifier = itemModifier
                     .weight(1f)
                     .fillMaxHeight(),
                 verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),

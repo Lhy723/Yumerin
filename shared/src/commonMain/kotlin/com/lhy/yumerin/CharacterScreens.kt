@@ -424,6 +424,7 @@ private fun CharacterGroupCard(
 internal fun CharacterEditorPage(
     existing: CharacterProfile?,
     modelProfiles: List<ModelProfile>,
+    defaultModelProfileId: EntityId?,
     onBack: () -> Unit,
     onPickAvatar: ((onSelected: (String?) -> Unit) -> Unit),
     onOpenMemory: (() -> Unit)?,
@@ -446,6 +447,7 @@ internal fun CharacterEditorPage(
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     val canSave = name.isNotBlank()
     val selectedModel = modelProfiles.firstOrNull { it.id == selectedModelId }
+    val globalDefaultModel = modelProfiles.firstOrNull { it.id == defaultModelProfileId }
 
     MiuixScaffold(
         modifier = Modifier.fillMaxSize(),
@@ -492,7 +494,8 @@ internal fun CharacterEditorPage(
                 entry = DropdownEntry(
                     items = listOf(
                         DropdownItem(
-                            text = "全局默认模型",
+                            text = globalDefaultModel?.let { "跟随全局默认（${it.displayName}）" }
+                                ?: "跟随全局默认（未设置）",
                             selected = selectedModelId == null,
                             onClick = { selectedModelId = null }
                         )
@@ -505,7 +508,9 @@ internal fun CharacterEditorPage(
                     }
                 ),
                 title = "使用模型",
-                summary = selectedModel?.let { "${it.providerName} · ${it.modelId}" },
+                summary = selectedModel?.let { "${it.providerName} · ${it.modelId}" }
+                    ?: globalDefaultModel?.let { "默认：${it.providerName} · ${it.modelId}" }
+                    ?: "尚未设置全局默认模型",
                 modifier = Modifier.fillMaxWidth(),
                 renderInRootScaffold = false
             )

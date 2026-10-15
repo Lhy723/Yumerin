@@ -136,7 +136,7 @@ internal fun SettingsPage(
                 onOpenCategory(SettingsCategory.CONTEXT)
             }
             SettingsOverviewRow(
-                "模型", "配置和本地模型", YumerinModelIcon, onOpenModels
+                "模型", "远端配置、全局默认与本地模型管理", YumerinModelIcon, onOpenModels
             )
             SettingsOverviewRow(
                 "数据与存储", "导出、导入和本地数据管理", YumerinStorageIcon, onOpenDataManagement

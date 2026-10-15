@@ -62,6 +62,7 @@ private sealed interface AppDestination {
     data object CHARACTER_CONTINUITY_LIST : AppDestination
     data class CHARACTER_CONTINUITY(val characterId: EntityId) : AppDestination
     data object MODELS : AppDestination
+    data object LOCAL_MODELS : AppDestination
     data class ABOUT(val returnTo: AppDestination = PROFILE) : AppDestination
     data object SCHEDULES : AppDestination
     data object DATA_MANAGEMENT : AppDestination
@@ -97,11 +98,12 @@ private fun AppDestination.rank(): Int = when (this) {
     AppDestination.SETTINGS -> 10
     is AppDestination.SETTINGS_CATEGORY -> 11
     AppDestination.MODELS -> 12
-    is AppDestination.ABOUT -> 13
-    AppDestination.SCHEDULES -> 14
-    AppDestination.DATA_MANAGEMENT -> 15
-    AppDestination.CHARACTER_CONTINUITY_LIST -> 16
-    is AppDestination.CHARACTER_CONTINUITY -> 17
+    AppDestination.LOCAL_MODELS -> 13
+    is AppDestination.ABOUT -> 14
+    AppDestination.SCHEDULES -> 15
+    AppDestination.DATA_MANAGEMENT -> 16
+    AppDestination.CHARACTER_CONTINUITY_LIST -> 17
+    is AppDestination.CHARACTER_CONTINUITY -> 18
 }
 
 @Composable
@@ -300,6 +302,7 @@ private fun AppContent(
                 AppDestination.CHARACTER_CONTINUITY_LIST -> AppDestination.SETTINGS
                 is AppDestination.CHARACTER_CONTINUITY -> AppDestination.CHARACTER_CONTINUITY_LIST
                 AppDestination.MODELS -> AppDestination.SETTINGS
+                AppDestination.LOCAL_MODELS -> AppDestination.MODELS
                 is AppDestination.ABOUT -> current.returnTo
                 AppDestination.SCHEDULES -> AppDestination.SETTINGS
                 AppDestination.DATA_MANAGEMENT -> AppDestination.SETTINGS
@@ -559,6 +562,7 @@ private fun AppContent(
                                     is AppDestination.CHARACTER_EDITOR -> CharacterEditorPage(
                                                                                 existing = allCharacters.firstOrNull { it.id == screen.characterId },
                                         modelProfiles = modelProfiles,
+                                        defaultModelProfileId = settings.defaultModelProfileId,
                                         onBack = { destination = screen.returnTo },
                                         onPickAvatar = onPickAvatar,
                                         onOpenMemory = screen.characterId?.let { id ->
@@ -658,11 +662,20 @@ private fun AppContent(
                                     AppDestination.MODELS -> ModelsPage(
                                                                                 graph = graph,
                                         profiles = modelProfiles,
+                                        localArtifactCount = localArtifacts.size,
+                                        settings = settings,
+                                        onSettingsChanged = ::updateSettings,
+                                        onOpenLocalModels = { destination = AppDestination.LOCAL_MODELS },
+                                        onBack = { destination = AppDestination.SETTINGS }
+                                    )
+                                    AppDestination.LOCAL_MODELS -> LocalModelsPage(
+                                        graph = graph,
+                                        profiles = modelProfiles,
                                         localArtifacts = localArtifacts,
                                         settings = settings,
                                         onSettingsChanged = ::updateSettings,
                                         onPickLocalModel = onPickLocalModel,
-                                        onBack = { destination = AppDestination.SETTINGS }
+                                        onBack = { destination = AppDestination.MODELS }
                                     )
                                     is AppDestination.ABOUT -> AboutPage(
                                                                                 appIcon = appIcon,

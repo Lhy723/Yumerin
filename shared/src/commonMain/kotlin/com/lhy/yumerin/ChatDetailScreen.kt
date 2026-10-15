@@ -31,6 +31,10 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import top.yukonga.miuix.kmp.basic.TextField as MiuixTextField
 import top.yukonga.miuix.kmp.basic.TextFieldDefaults as MiuixTextFieldDefaults
+import top.yukonga.miuix.kmp.basic.DropdownEntry as MiuixDropdownEntry
+import top.yukonga.miuix.kmp.basic.DropdownItem as MiuixDropdownItem
+import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
+import top.yukonga.miuix.kmp.basic.Text as MiuixText
 import kotlin.time.Clock
 
 @Composable
@@ -70,22 +74,21 @@ internal fun ChatDetailPage(
     val scope = rememberCoroutineScope()
     var draft by remember { mutableStateOf("") }
     var showModelGate by remember { mutableStateOf(false) }
-    var showModelMenu by remember { mutableStateOf(false) }
     var sending by remember { mutableStateOf(false) }
     var sendJob by remember { mutableStateOf<Job?>(null) }
     var recallText by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(messageScrollState) {
-        snapshotFlow { messageScrollState.value }
-            .collect { scrollValue ->
-                followNewMessages = messageScrollState.maxValue - scrollValue <= 48
+        snapshotFlow { messageScrollState.value to messageScrollState.maxValue }
+            .collect { (scrollValue, maxScrollValue) ->
+                followNewMessages = maxScrollValue - scrollValue <= 48
             }
     }
 
     val latestMessageKey = messages.lastOrNull()?.let { message ->
         "${message.id}:${message.text}:${message.deliveryState}:${message.responseState}"
     } ?: "empty"
-    LaunchedEffect(chatId, latestMessageKey) {
+    LaunchedEffect(chatId, latestMessageKey, messageScrollState.maxValue) {
         withFrameNanos { }
         if (!didInitialScroll && messages.isNotEmpty()) {
             messageScrollState.scrollTo(messageScrollState.maxValue)
@@ -155,6 +158,10 @@ internal fun ChatDetailPage(
         }
     }
 
+    MiuixScaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = Color.Transparent
+    ) { _ ->
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
@@ -201,15 +208,13 @@ internal fun ChatDetailPage(
                 .weight(1f)
                 .fillMaxWidth()
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                                ) {
+            Column(modifier = Modifier.fillMaxSize()) {
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .weight(1f)
+                        .fillMaxWidth()
                         .verticalScroll(messageScrollState)
-                        .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 136.dp),
+                        .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     messages.forEach { message ->
@@ -282,11 +287,9 @@ internal fun ChatDetailPage(
                         }
                     }
                 }
-            }
 
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .imePadding()
                     .padding(horizontal = 12.dp, vertical = 8.dp)
@@ -305,43 +308,41 @@ internal fun ChatDetailPage(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             if (character != null && group == null) {
-                                val modelLabel = character.modelProfileId
-                                    ?.let { id -> modelProfiles.firstOrNull { it.id == id }?.displayName }
-                                    ?: "未绑定模型"
-                                Box {
-                                    MiuixCardSurface(
-                                        modifier = Modifier
-                                            .clickable { showModelMenu = true },
-                                    ) {
-                                        Text(
-                                            "模型：$modelLabel",
-                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                    DropdownMenu(
-                                        expanded = showModelMenu,
-                                        onDismissRequest = { showModelMenu = false }
-                                    ) {
-                                        DropdownMenuItem(
-                                            text = { Text("未绑定") },
-                                            onClick = {
-                                                showModelMenu = false
-                                                scope.launch {
-                                                    graph.characters.saveCharacter(
-                                                        character.copy(modelProfileId = null, updatedAt = nowMillis())
-                                                    )
-                                                }
-                                            }
-                                        )
-                                        modelProfiles.forEach { profile ->
-                                            DropdownMenuItem(
-                                                text = { Text(profile.displayName) },
+                                val globalDefaultModel = modelProfiles.firstOrNull {
+                                    it.id == settings.defaultModelProfileId
+                                }
+                                val followsGlobalDefault = character.modelProfileId == null
+                                val selectedModel = modelProfiles.firstOrNull {
+                                    it.id == character.modelProfileId
+                                }
+                                val modelLabel = when {
+                                    selectedModel != null -> selectedModel.displayName
+                                    followsGlobalDefault && globalDefaultModel != null ->
+                                        "默认 · ${globalDefaultModel.displayName}"
+                                    followsGlobalDefault -> "未设置模型"
+                                    else -> "模型不可用"
+                                }
+                                OverlayDropdownCapsule(
+                                    entry = MiuixDropdownEntry(
+                                        items = listOf(
+                                            MiuixDropdownItem(
+                                                text = globalDefaultModel?.let {
+                                                    "跟随全局默认（${it.displayName}）"
+                                                } ?: "跟随全局默认（未设置）",
+                                                selected = followsGlobalDefault,
                                                 onClick = {
-                                                    showModelMenu = false
+                                                    scope.launch {
+                                                        graph.characters.saveCharacter(
+                                                            character.copy(modelProfileId = null, updatedAt = nowMillis())
+                                                        )
+                                                    }
+                                                }
+                                            )
+                                        ) + modelProfiles.map { profile ->
+                                            MiuixDropdownItem(
+                                                text = profile.displayName,
+                                                selected = profile.id == character.modelProfileId,
+                                                onClick = {
                                                     scope.launch {
                                                         graph.characters.saveCharacter(
                                                             character.copy(modelProfileId = profile.id, updatedAt = nowMillis())
@@ -350,12 +351,14 @@ internal fun ChatDetailPage(
                                                 }
                                             )
                                         }
-                                    }
-                                }
+                                    ),
+                                    label = modelLabel,
+                                    renderInRootScaffold = false
+                                )
                             } else {
-                                Text(
-                                    "群聊使用当前模型配置",
-                                    style = MaterialTheme.typography.labelLarge,
+                                MiuixText(
+                                    "群聊按各角色模型设置响应",
+                                    style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.68f)
                                 )
                             }
@@ -390,6 +393,7 @@ internal fun ChatDetailPage(
                     }
                 }
             }
+            }
         }
     }
 
@@ -414,6 +418,7 @@ internal fun ChatDetailPage(
             text = { Text(text) },
             confirmButton = { TextButton(onClick = { recallText = null }) { Text("关闭") } }
         )
+    }
     }
 }
 
