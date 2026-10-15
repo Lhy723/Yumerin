@@ -20,27 +20,26 @@ import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.*
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.kyant.backdrop.Backdrop
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.lhy.yumerin.core.model.*
 import com.lhy.yumerin.data.memory.*
 import com.lhy.yumerin.designsystem.*
 import com.lhy.yumerin.domain.*
-import com.lhy.yumerin.domain.agent.*
 import com.lhy.yumerin.domain.memory.*
 import com.lhy.yumerin.domain.repository.*
 import com.lhy.yumerin.domain.usecase.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlin.time.Clock
+import top.yukonga.miuix.kmp.basic.DropdownEntry
+import top.yukonga.miuix.kmp.basic.DropdownItem
+import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
 
 @Composable
 internal fun CharactersPage(
-    backdrop: Backdrop,
     characters: List<CharacterProfile>,
     archivedCharacters: List<CharacterProfile>,
     onCreate: () -> Unit,
+    onOpenProfile: (EntityId) -> Unit,
     onEdit: (EntityId) -> Unit,
     onCreateChat: (CharacterProfile) -> Unit
 ) {
@@ -72,9 +71,8 @@ internal fun CharactersPage(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            GlassIconButton(
-                backdrop = backdrop,
-                icon = YumerinAddIcon,
+            MiuixActionIconButton(
+                                icon = YumerinAddIcon,
                 contentDescription = "新建角色",
                 onClick = onCreate
             )
@@ -92,11 +90,8 @@ internal fun CharactersPage(
         }
 
         if (filteredCharacters.isEmpty() && characters.isEmpty()) {
-            GlassSurface(
-                backdrop = backdrop,
+            MiuixCardSurface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                surfaceAlpha = 0.6f
             ) {
                 Column(
                     modifier = Modifier
@@ -122,7 +117,7 @@ internal fun CharactersPage(
             )
         } else {
             filteredCharacters.forEach { character ->
-                CharacterCard(backdrop, character, false, onEdit, onCreateChat)
+                CharacterCard(character, false, onOpenProfile, onEdit, onCreateChat)
             }
         }
 
@@ -136,29 +131,27 @@ internal fun CharactersPage(
             AnimatedVisibility(visible = showArchived) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     filteredArchived.forEach { character ->
-                        CharacterCard(backdrop, character, true, onEdit, onCreateChat)
+                        CharacterCard(character, true, onOpenProfile, onEdit, onCreateChat)
                     }
                 }
             }
         } else if (archivedCharacters.isNotEmpty()) {
             Text("没有匹配的已归档角色", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        Spacer(Modifier.height(96.dp))
     }
 }
 
 @Composable
 private fun CharacterCard(
-    backdrop: Backdrop,
     character: CharacterProfile,
     archived: Boolean,
+    onOpenProfile: (EntityId) -> Unit,
     onEdit: (EntityId) -> Unit,
     onCreateChat: (CharacterProfile) -> Unit
 ) {
-    GlassSurface(
-        backdrop = backdrop,
+    MiuixCardSurface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        surfaceAlpha = 0.62f
     ) {
         Column(
             modifier = Modifier
@@ -167,7 +160,9 @@ private fun CharacterCard(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpenProfile(character.id) },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
@@ -205,8 +200,228 @@ private fun CharacterCard(
 
 
 @Composable
+internal fun CharacterDetailPage(
+    character: CharacterProfile?,
+    groups: List<GroupProfile>,
+    chats: List<ChatThread>,
+    onBack: () -> Unit,
+    onOpenChat: () -> Unit,
+    onOpenMemory: () -> Unit,
+    onEdit: () -> Unit,
+    onOpenGroup: (EntityId) -> Unit
+) {
+    val relatedGroups = remember(character?.id, groups) {
+        character?.let { profile ->
+            groups.filter { profile.id in it.memberCharacterIds && it.deletedAt == null }
+        }.orEmpty()
+    }
+    val directChat = remember(character?.id, chats) {
+        character?.let { profile ->
+            chats.filter { it.characterId == profile.id && it.deletedAt == null }
+                .maxByOrNull { it.lastActivityAt }
+        }
+    }
+
+    PageColumn {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            MiuixBackButton(onClick = onBack)
+            Text("角色详情", style = MaterialTheme.typography.titleLarge)
+        }
+
+        if (character == null) {
+            MiuixCardSurface(Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("角色不存在", style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        "这个角色可能已被删除。",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 6.dp, bottom = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Avatar(
+                    text = character.name.take(1).ifBlank { "?" },
+                    uri = character.avatarUri,
+                    size = 104.dp,
+                    contentDescription = "${character.name}的头像"
+                )
+                Text(character.name, style = MaterialTheme.typography.headlineSmall)
+                Text(
+                    if (character.archived) "已归档角色" else "Yumerin 角色",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ProfileActionTile(
+                                        icon = YumerinChatIcon,
+                    title = if (directChat == null) "开始聊天" else "继续聊天",
+                    modifier = Modifier.weight(1f),
+                    enabled = directChat != null || !character.archived,
+                    onClick = onOpenChat
+                )
+                ProfileActionTile(
+                                        icon = YumerinMemoryIcon,
+                    title = "记忆",
+                    modifier = Modifier.weight(1f),
+                    onClick = onOpenMemory
+                )
+                ProfileActionTile(
+                                        icon = YumerinEditIcon,
+                    title = "编辑资料",
+                    modifier = Modifier.weight(1f),
+                    onClick = onEdit
+                )
+            }
+
+            Text("角色资料", style = MaterialTheme.typography.titleMedium)
+            MiuixCardSurface(Modifier.fillMaxWidth()) {
+                Column(Modifier.fillMaxWidth()) {
+                    CharacterDetailInfoRow(
+                        label = "角色介绍",
+                        value = character.description,
+                        fallback = "还没有添加介绍。"
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 18.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
+                    )
+                    CharacterDetailInfoRow(
+                        label = "关系设定",
+                        value = character.relationshipFraming,
+                        fallback = "尚未设置"
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 18.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
+                    )
+                    CharacterDetailInfoRow(
+                        label = "性格与语气",
+                        value = listOf(character.personality, character.tone)
+                            .filter { it.isNotBlank() }
+                            .joinToString("\n")
+                            .ifBlank { "尚未设置" }
+                    )
+                    val settingDetails = listOf(character.setting, character.backstory, character.interactionStyle)
+                        .filter { it.isNotBlank() }
+                        .joinToString("\n\n")
+                    if (settingDetails.isNotBlank()) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 18.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
+                        )
+                        CharacterDetailInfoRow(label = "背景与互动方式", value = settingDetails)
+                    }
+                }
+            }
+
+            Text("群组", style = MaterialTheme.typography.titleMedium)
+            if (relatedGroups.isEmpty()) {
+                MiuixCardSurface(Modifier.fillMaxWidth()) {
+                    Text(
+                        "还没有加入群聊",
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                relatedGroups.forEach { group ->
+                    val groupChatExists = chats.any { it.groupId == group.id && it.deletedAt == null }
+                    CharacterGroupCard(
+                                                group = group,
+                        enabled = groupChatExists,
+                        onClick = { onOpenGroup(group.id) }
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun CharacterDetailInfoRow(
+    label: String,
+    value: String,
+    fallback: String? = null
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 18.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            value.ifBlank { fallback.orEmpty() },
+            style = MaterialTheme.typography.bodyLarge,
+            color = if (value.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
+private fun CharacterGroupCard(
+    group: GroupProfile,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    MiuixCardSurface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Avatar(group.name.take(1).ifBlank { "群" }, group.avatarUri, size = 48.dp)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(group.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    if (group.archived) "已归档 · ${group.memberCharacterIds.size} 位角色" else "群聊 · ${group.memberCharacterIds.size} 位角色",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (enabled) {
+                Icon(
+                    imageVector = YumerinChevronRight,
+                    contentDescription = "打开群聊",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+
+@Composable
 internal fun CharacterEditorPage(
-    backdrop: Backdrop,
     existing: CharacterProfile?,
     modelProfiles: List<ModelProfile>,
     onBack: () -> Unit,
@@ -230,16 +445,21 @@ internal fun CharacterEditorPage(
     var proactiveDailyLimit by remember(existing?.id) { mutableStateOf((existing?.proactiveDailyLimit ?: 3).toString()) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     val canSave = name.isNotBlank()
+    val selectedModel = modelProfiles.firstOrNull { it.id == selectedModelId }
 
+    MiuixScaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = Color.Transparent
+    ) { _ ->
     PageColumn {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            GlassBackButton(backdrop = backdrop, onClick = onBack)
+            MiuixBackButton(onClick = onBack)
             Text(if (existing == null) "创建角色" else "编辑角色", style = MaterialTheme.typography.headlineLarge)
         }
-        CharacterEditorSection(backdrop, "角色资料") {
+        CharacterEditorSection("角色资料") {
             OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), label = { Text("名称") }, singleLine = true)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Avatar(name.ifBlank { "?" }, avatarUri)
@@ -258,7 +478,7 @@ internal fun CharacterEditorPage(
             )
         }
 
-        CharacterEditorSection(backdrop, "个性与背景") {
+        CharacterEditorSection("个性与背景") {
             OutlinedTextField(relationship, { relationship = it }, Modifier.fillMaxWidth(), label = { Text("关系设定") }, minLines = 2)
             OutlinedTextField(personality, { personality = it }, Modifier.fillMaxWidth(), label = { Text("人格") }, minLines = 2)
             OutlinedTextField(tone, { tone = it }, Modifier.fillMaxWidth(), label = { Text("语气") }, minLines = 2)
@@ -267,37 +487,28 @@ internal fun CharacterEditorPage(
             OutlinedTextField(interactionStyle, { interactionStyle = it }, Modifier.fillMaxWidth(), label = { Text("互动风格") }, minLines = 2)
         }
 
-        CharacterEditorSection(backdrop, "对话与主动互动") {
-            Text("使用模型", style = MaterialTheme.typography.titleMedium)
-            Row(
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable { selectedModelId = null },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                RadioButton(selected = selectedModelId == null, onClick = { selectedModelId = null })
-                Text("使用全局默认模型")
-            }
-            modelProfiles.forEach { profile ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 56.dp)
-                        .clickable { selectedModelId = profile.id },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = selectedModelId == profile.id,
-                        onClick = { selectedModelId = profile.id }
-                    )
-                    Column(modifier = Modifier.padding(vertical = 6.dp)) {
-                        Text(profile.displayName)
-                        Text(
-                            "${profile.providerName} · ${profile.modelId}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+        CharacterEditorSection("对话与主动互动") {
+            OverlayDropdownMenu(
+                entry = DropdownEntry(
+                    items = listOf(
+                        DropdownItem(
+                            text = "全局默认模型",
+                            selected = selectedModelId == null,
+                            onClick = { selectedModelId = null }
+                        )
+                    ) + modelProfiles.map { profile ->
+                        DropdownItem(
+                            text = profile.displayName,
+                            selected = selectedModelId == profile.id,
+                            onClick = { selectedModelId = profile.id }
                         )
                     }
-                }
-            }
+                ),
+                title = "使用模型",
+                summary = selectedModel?.let { "${it.providerName} · ${it.modelId}" },
+                modifier = Modifier.fillMaxWidth(),
+                renderInRootScaffold = false
+            )
             if (modelProfiles.isEmpty()) {
                 Text("还没有模型配置。先在设置的模型页面添加可用模型。", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -374,19 +585,16 @@ internal fun CharacterEditorPage(
             dismissButton = { TextButton(onClick = { showDeleteConfirmation = false }) { Text("取消") } }
         )
     }
+    }
 }
 
 @Composable
 private fun CharacterEditorSection(
-    backdrop: Backdrop,
     title: String,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    GlassSurface(
-        backdrop = backdrop,
+    MiuixCardSurface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        surfaceAlpha = 0.62f
     ) {
         Column(
             modifier = Modifier
@@ -403,7 +611,6 @@ private fun CharacterEditorSection(
 
 @Composable
 internal fun MemoryPage(
-    backdrop: Backdrop,
     character: CharacterProfile?,
     graph: AppGraph,
     onBack: () -> Unit
@@ -414,7 +621,7 @@ internal fun MemoryPage(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                GlassBackButton(backdrop = backdrop, onClick = onBack)
+                MiuixBackButton(onClick = onBack)
                 Text("找不到角色", style = MaterialTheme.typography.headlineLarge)
             }
         }
@@ -430,7 +637,7 @@ internal fun MemoryPage(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            GlassBackButton(backdrop = backdrop, onClick = onBack)
+            MiuixBackButton(onClick = onBack)
             Text("${character.name}的记忆", style = MaterialTheme.typography.headlineLarge)
         }
         Text("只属于这个角色。删除聊天不会删除这里的长期记忆。")
@@ -455,12 +662,12 @@ internal fun MemoryPage(
         }
         val visibleMemories = memories.filter { !showPendingOnly || it.reviewState == MemoryReviewState.PENDING_REVIEW }
         if (visibleMemories.isEmpty()) {
-            GlassSurface(backdrop, Modifier.fillMaxWidth()) {
+            MiuixCardSurface(Modifier.fillMaxWidth()) {
                 Text("还没有稳定记忆。普通聊天中的明确偏好和资料会在开启自动维护时写入。", Modifier.padding(18.dp))
             }
         } else {
             visibleMemories.forEach { memory ->
-                GlassSurface(backdrop, Modifier.fillMaxWidth()) {
+                MiuixCardSurface(Modifier.fillMaxWidth()) {
                     Column(
                         Modifier
                             .fillMaxWidth()

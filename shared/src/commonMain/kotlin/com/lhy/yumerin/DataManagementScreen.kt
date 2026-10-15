@@ -20,14 +20,10 @@ import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.*
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.kyant.backdrop.Backdrop
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.lhy.yumerin.core.model.*
 import com.lhy.yumerin.data.memory.*
 import com.lhy.yumerin.designsystem.*
 import com.lhy.yumerin.domain.*
-import com.lhy.yumerin.domain.agent.*
 import com.lhy.yumerin.domain.memory.*
 import com.lhy.yumerin.domain.repository.*
 import com.lhy.yumerin.domain.usecase.*
@@ -37,7 +33,6 @@ import kotlin.time.Clock
 
 @Composable
 internal fun DataManagementPage(
-    backdrop: Backdrop,
     graph: AppGraph,
     onExportData: (String) -> Unit,
     onImportDataRequest: ((onPayload: (String) -> Unit) -> Unit),
@@ -53,10 +48,10 @@ internal fun DataManagementPage(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            GlassBackButton(backdrop = backdrop, onClick = onBack)
+            MiuixBackButton(onClick = onBack)
             Text("数据管理", style = MaterialTheme.typography.headlineLarge)
         }
-        GlassSurface(backdrop, Modifier.fillMaxWidth()) {
+        MiuixCardSurface(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("可携带数据包", style = MaterialTheme.typography.titleLarge)
                 Text("导出角色、聊天、群组、记忆、模型元数据和主动计划；API Key 与大型模型文件永不进入导出包。导入采用合并方式，不默认删除已有数据。")
@@ -120,7 +115,7 @@ internal fun DataManagementPage(
                 }
             }
         }
-        GlassSurface(backdrop, Modifier.fillMaxWidth()) {
+        MiuixCardSurface(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("清除全部本地数据", style = MaterialTheme.typography.titleLarge)
                 Text("会停止后台陪伴，删除角色、聊天、群组、记忆、头像、模型配置和 API Key。此操作不可恢复，建议先导出。", color = MaterialTheme.colorScheme.error)

@@ -90,6 +90,7 @@ class MainActivity : ComponentActivity(), KoinComponent {
                 appGraph = appGraph,
                 appIcon = appIcon,
                 initialChatId = initialChatId,
+                skipAdultConfirmationForDebug = BuildConfig.SKIP_ADULT_CONFIRMATION,
                 onBackgroundPermissionRequest = { onGranted ->
                     if (
                         Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -146,5 +147,5 @@ class MainActivity : ComponentActivity(), KoinComponent {
 @Preview
 @Composable
 fun AppAndroidPreview() {
-    App()
+    App(skipAdultConfirmationForDebug = true)
 }

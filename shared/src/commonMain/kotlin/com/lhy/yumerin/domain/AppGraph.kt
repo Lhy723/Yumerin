@@ -7,6 +7,7 @@ import com.lhy.yumerin.domain.repository.CredentialStore
 import com.lhy.yumerin.domain.repository.GroupRepository
 import com.lhy.yumerin.domain.repository.MemoryRepository
 import com.lhy.yumerin.domain.repository.ModelProfileRepository
+import com.lhy.yumerin.domain.repository.ModelConfigurationTester
 import com.lhy.yumerin.domain.repository.SettingsRepository
 import com.lhy.yumerin.domain.repository.CompanionScheduleRepository
 import com.lhy.yumerin.domain.repository.CharacterRuntimeStateRepository
@@ -30,6 +31,7 @@ interface AppGraph {
     val groups: GroupRepository
     val memories: MemoryRepository
     val models: ModelProfileRepository
+    val modelConfigurationTester: ModelConfigurationTester
     val settings: SettingsRepository
     val groupMemberships: GroupMembershipRepository
     val schedules: CompanionScheduleRepository

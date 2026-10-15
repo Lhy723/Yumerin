@@ -20,24 +20,21 @@ import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.*
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.kyant.backdrop.Backdrop
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.lhy.yumerin.core.model.*
 import com.lhy.yumerin.data.memory.*
 import com.lhy.yumerin.designsystem.*
 import com.lhy.yumerin.domain.*
-import com.lhy.yumerin.domain.agent.*
 import com.lhy.yumerin.domain.memory.*
 import com.lhy.yumerin.domain.repository.*
 import com.lhy.yumerin.domain.usecase.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import top.yukonga.miuix.kmp.basic.TextField as MiuixTextField
+import top.yukonga.miuix.kmp.basic.TextFieldDefaults as MiuixTextFieldDefaults
 import kotlin.time.Clock
 
 @Composable
 internal fun ChatDetailPage(
-    backdrop: Backdrop,
     chatId: EntityId,
     chats: List<ChatThread>,
     characters: List<CharacterProfile>,
@@ -77,7 +74,6 @@ internal fun ChatDetailPage(
     var sending by remember { mutableStateOf(false) }
     var sendJob by remember { mutableStateOf<Job?>(null) }
     var recallText by remember { mutableStateOf<String?>(null) }
-    val chatBackdrop = rememberLayerBackdrop()
 
     LaunchedEffect(messageScrollState) {
         snapshotFlow { messageScrollState.value }
@@ -166,7 +162,7 @@ internal fun ChatDetailPage(
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            GlassBackButton(backdrop = backdrop, onClick = onBack)
+            MiuixBackButton(onClick = onBack)
             Spacer(Modifier.width(10.dp))
             Avatar(
                 text = (group?.name ?: character?.name ?: conversationTitle).take(1).ifBlank { "聊" },
@@ -198,7 +194,7 @@ internal fun ChatDetailPage(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            GlassMoreButton(backdrop = backdrop, onClick = onOpenChatSettings)
+            MiuixMoreButton(onClick = onOpenChatSettings)
         }
         Box(
             modifier = Modifier
@@ -208,8 +204,7 @@ internal fun ChatDetailPage(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .layerBackdrop(chatBackdrop)
-            ) {
+                                ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -296,11 +291,8 @@ internal fun ChatDetailPage(
                     .imePadding()
                     .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
-                LiquidGlassSurface(
-                    backdrop = chatBackdrop,
+                MiuixCardSurface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    surfaceAlpha = 0.42f
                 ) {
                     Column(
                         modifier = Modifier
@@ -317,13 +309,9 @@ internal fun ChatDetailPage(
                                     ?.let { id -> modelProfiles.firstOrNull { it.id == id }?.displayName }
                                     ?: "未绑定模型"
                                 Box {
-                                    GlassSurface(
-                                        backdrop = chatBackdrop,
+                                    MiuixCardSurface(
                                         modifier = Modifier
-                                            .clip(RoundedCornerShape(18.dp))
                                             .clickable { showModelMenu = true },
-                                        shape = RoundedCornerShape(18.dp),
-                                        surfaceAlpha = 0.48f
                                     ) {
                                         Text(
                                             "模型：$modelLabel",
@@ -378,28 +366,23 @@ internal fun ChatDetailPage(
                             verticalAlignment = Alignment.Bottom,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            TextField(
+                            MiuixTextField(
                                 value = draft,
                                 onValueChange = { draft = it },
                                 modifier = Modifier.weight(1f),
-                                placeholder = { Text("输入消息") },
-                                shape = RoundedCornerShape(18.dp),
+                                label = "输入消息",
+                                useLabelAsPlaceholder = true,
+                                cornerRadius = 18.dp,
                                 minLines = 1,
                                 maxLines = 4,
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color.Transparent,
-                                    unfocusedContainerColor = Color.Transparent,
-                                    disabledContainerColor = Color.Transparent,
-                                    errorContainerColor = Color.Transparent,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent,
-                                    disabledIndicatorColor = Color.Transparent,
-                                    errorIndicatorColor = Color.Transparent
+                                colors = MiuixTextFieldDefaults.textFieldColors(
+                                    backgroundColor = Color.Transparent,
+                                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    borderColor = MaterialTheme.colorScheme.primary
                                 )
                             )
-                            GlassSendButton(
-                                backdrop = chatBackdrop,
-                                sending = sending,
+                            MiuixSendButton(
+                                                                sending = sending,
                                 enabled = sending || draft.isNotBlank(),
                                 onClick = ::send
                             )

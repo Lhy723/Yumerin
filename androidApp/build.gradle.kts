@@ -1,5 +1,8 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
+val phoneOptimizedApk =
+    providers.gradleProperty("yumerin.phoneOptimizedApk").orNull == "true"
+
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeCompiler)
@@ -30,6 +33,11 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
+        if (phoneOptimizedApk) {
+            ndk {
+                abiFilters.add("arm64-v8a")
+            }
+        }
     }
     packaging {
         resources {
@@ -37,8 +45,27 @@ android {
         }
     }
     buildTypes {
+        debug {
+            buildConfigField(
+                "boolean",
+                "SKIP_ADULT_CONFIRMATION",
+                (!phoneOptimizedApk).toString()
+            )
+            if (phoneOptimizedApk) {
+                // Produce a release-like, arm64-only sideload APK while keeping normal Debug intact.
+                isDebuggable = false
+                isMinifyEnabled = true
+                isShrinkResources = true
+                proguardFiles(
+                    getDefaultProguardFile("proguard-android-optimize.txt"),
+                    "proguard-rules.pro"
+                )
+            }
+        }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            buildConfigField("boolean", "SKIP_ADULT_CONFIRMATION", "false")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -51,5 +78,6 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }

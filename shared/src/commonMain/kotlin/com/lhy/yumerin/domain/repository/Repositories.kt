@@ -23,6 +23,18 @@ interface CredentialStore {
     suspend fun clear()
 }
 
+data class ModelConfigurationTestResult(
+    val connectionSucceeded: Boolean,
+    /** Null means the tool-call check could not be reached because the connection check failed. */
+    val toolCallsSupported: Boolean?,
+    val message: String
+)
+
+/** Tests a user-entered remote profile without persisting its credential or profile. */
+interface ModelConfigurationTester {
+    suspend fun testRemote(baseUrl: String, modelId: String, apiKey: String): ModelConfigurationTestResult
+}
+
 interface AvatarStore {
     suspend fun delete(uri: String)
 }

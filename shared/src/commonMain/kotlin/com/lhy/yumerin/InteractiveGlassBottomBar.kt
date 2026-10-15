@@ -1,6 +1,8 @@
 package com.lhy.yumerin
 
-import androidx.compose.foundation.border
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.EaseOut
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
@@ -20,22 +22,24 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -45,6 +49,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
@@ -60,9 +65,13 @@ import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
 import com.kyant.shapes.Capsule
+import com.lhy.yumerin.designsystem.EdgeLight
+import com.lhy.yumerin.designsystem.edgeLight
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.roundToInt
+import kotlin.math.sign
 
 @Composable
 internal fun MiuixFloatingBottomBar(
@@ -74,13 +83,14 @@ internal fun MiuixFloatingBottomBar(
 ) {
     val pages = AppPage.entries
     val selectedIndex = pages.indexOf(selectedPage).coerceAtLeast(0)
+    val latestSelectedIndex = rememberUpdatedState(selectedIndex)
     val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
-    val contentTint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.88f)
+    val contentTint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
     val captureTint = if (isLightTheme) Color.Black else Color.White
     val trackColor = if (isLightTheme) {
-        Color(0xFFFAF9FC).copy(alpha = 0.68f)
+        Color(0xFFFAFAFA).copy(alpha = 0.6f)
     } else {
-        Color(0xFF24232A).copy(alpha = 0.70f)
+        Color(0xFF242424).copy(alpha = 0.6f)
     }
     val animationScope = rememberCoroutineScope()
     val selectorAnimation = remember(animationScope, pages.size, reducedMotion) {
@@ -100,9 +110,6 @@ internal fun MiuixFloatingBottomBar(
     val tabsBackdrop = rememberLayerBackdrop()
     val glowBackdrop = rememberLayerBackdrop()
     val combinedBackdrop = rememberCombinedBackdrop(backdrop, tabsBackdrop, glowBackdrop)
-    val interactiveHighlight = remember(animationScope) {
-        InteractiveHighlight(animationScope = animationScope)
-    }
     val pressProgress = selectorAnimation.pressProgress
     val viewConfiguration = LocalViewConfiguration.current
     val density = LocalDensity.current
@@ -116,32 +123,58 @@ internal fun MiuixFloatingBottomBar(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center
     ) {
-        val barWidth = maxWidth * 0.63f
+        val barWidth = minOf(maxWidth * 0.89f, 420.dp)
         BoxWithConstraints(
             modifier = Modifier
                 .width(barWidth)
                 .height(56.dp),
             contentAlignment = Alignment.CenterStart
         ) {
+            val offsetAnimation = remember { Animatable(0f) }
+            val panelOffset by remember(density, constraints.maxWidth) {
+                derivedStateOf {
+                    val fraction = (offsetAnimation.value / constraints.maxWidth.coerceAtLeast(1))
+                        .coerceIn(-1f, 1f)
+                    with(density) {
+                        4.dp.toPx() * fraction.sign * EaseOut.transform(abs(fraction))
+                    }
+                }
+            }
+            val isLtr = LocalLayoutDirection.current == LayoutDirection.Ltr
+            val ltrSign = if (isLtr) 1f else -1f
+            val latestPanelOffset = rememberUpdatedState(panelOffset)
+            val interactiveHighlight = remember(animationScope, density) {
+                InteractiveHighlight(
+                    animationScope = animationScope,
+                    position = { size, finger ->
+                        val scale = 1f + with(density) { 16.dp.toPx() } / size.width
+                        Offset(
+                            (finger.x - latestPanelOffset.value - size.width / 2f) / scale + size.width / 2f,
+                            (finger.y - size.height / 2f) / scale + size.height / 2f
+                        )
+                    }
+                )
+            }
             val horizontalInsetPx = with(density) { 4.dp.toPx() }
             val tabWidthPx = ((constraints.maxWidth - horizontalInsetPx * 2f) / pages.size)
                 .coerceAtLeast(1f)
             val tabWidth = with(density) { tabWidthPx.toDp() }
-            val trackBorder = Brush.verticalGradient(
-                colors = if (isLightTheme) {
-                    listOf(Color.White.copy(alpha = 0.84f), Color.White.copy(alpha = 0.16f))
-                } else {
-                    listOf(Color.White.copy(alpha = 0.28f), Color.White.copy(alpha = 0.07f))
-                }
-            )
+            val edgeLight = remember(isLightTheme) {
+                EdgeLight(
+                    color = Color.White.copy(alpha = if (isLightTheme) 0.6f else 0.2f),
+                    width = if (isLightTheme) 0.24.dp else 0.34.dp,
+                    blurRadius = 0.4.dp
+                )
+            }
 
             Box(
                 Modifier
                     .fillMaxSize()
                     .graphicsLayer {
+                        translationX = panelOffset
                         val scale = lerp(1f, 1f + 16.dp.toPx() / size.width, pressProgress)
                         scaleX = scale
                         scaleY = scale
@@ -154,15 +187,10 @@ internal fun MiuixFloatingBottomBar(
                             blur(8.dp.toPx())
                             lens(24.dp.toPx(), 24.dp.toPx())
                         },
-                        highlight = {
-                            Highlight.Default.copy(alpha = 0.22f * pressProgress)
-                        },
-                        shadow = { Shadow(alpha = 0.16f) },
-                        innerShadow = { InnerShadow(radius = 7.dp, alpha = 0.12f) },
                         onDrawSurface = { drawRect(trackColor) }
                     )
                     .then(interactiveHighlight.modifier)
-                    .border(0.8.dp, trackBorder, Capsule())
+                    .edgeLight(Capsule(), edgeLight)
             )
 
             NavigationTabsContent(
@@ -171,6 +199,12 @@ internal fun MiuixFloatingBottomBar(
                 onPageSelected = onPageSelected,
                 modifier = Modifier
                     .fillMaxSize()
+                    .graphicsLayer {
+                        translationX = panelOffset
+                        val scale = lerp(1f, 1f + 16.dp.toPx() / size.width, pressProgress)
+                        scaleX = scale
+                        scaleY = scale
+                    }
                     .padding(4.dp)
             )
 
@@ -182,7 +216,8 @@ internal fun MiuixFloatingBottomBar(
                     .alpha(0f)
                     .layerBackdrop(tabsBackdrop)
                     .graphicsLayer {
-                        val scale = lerp(1f, 1.12f, pressProgress)
+                        translationX = panelOffset
+                        val scale = lerp(1f, 1.2f, pressProgress)
                         scaleX = scale
                         scaleY = scale
                     }
@@ -202,6 +237,7 @@ internal fun MiuixFloatingBottomBar(
                         },
                         onDrawSurface = { drawRect(trackColor) }
                     )
+                    .then(interactiveHighlight.modifier)
                     .fillMaxSize()
                     .padding(4.dp)
                     .graphicsLayer(colorFilter = ColorFilter.tint(captureTint)),
@@ -221,6 +257,7 @@ internal fun MiuixFloatingBottomBar(
                     .fillMaxSize()
                     .layerBackdrop(glowBackdrop)
                     .graphicsLayer {
+                        translationX = panelOffset
                         val scale = lerp(1f, 1f + 16.dp.toPx() / size.width, pressProgress)
                         scaleX = scale
                         scaleY = scale
@@ -232,7 +269,11 @@ internal fun MiuixFloatingBottomBar(
                 Modifier
                     .padding(horizontal = 4.dp)
                     .graphicsLayer {
-                        translationX = selectorAnimation.value * tabWidthPx
+                        translationX = if (isLtr) {
+                            selectorAnimation.value * tabWidthPx + panelOffset
+                        } else {
+                            (pages.lastIndex - selectorAnimation.value) * tabWidthPx + panelOffset
+                        }
                         scaleX = selectorAnimation.scaleX
                         scaleY = selectorAnimation.scaleY
                         val velocity = selectorAnimation.velocity / 10f
@@ -252,19 +293,19 @@ internal fun MiuixFloatingBottomBar(
                             )
                         },
                         highlight = {
-                            Highlight.Default.copy(alpha = 0.82f * pressProgress)
+                            Highlight.Default.copy(alpha = pressProgress)
                         },
-                        shadow = { Shadow(alpha = 0.22f + 0.18f * pressProgress) },
+                        shadow = { Shadow(alpha = pressProgress) },
                         innerShadow = {
                             InnerShadow(
-                                radius = 7.dp * pressProgress,
-                                alpha = 0.16f * pressProgress
+                                radius = 8.dp * pressProgress,
+                                alpha = pressProgress
                             )
                         },
                         onDrawSurface = {
                             drawRect(
-                                if (isLightTheme) Color.Black.copy(alpha = 0.055f)
-                                else Color.White.copy(alpha = 0.095f),
+                                if (isLightTheme) Color.Black.copy(alpha = 0.06f)
+                                else Color.White.copy(alpha = 0.1f),
                                 alpha = 1f - pressProgress
                             )
                             drawRect(Color.Black.copy(alpha = 0.035f * pressProgress))
@@ -276,44 +317,45 @@ internal fun MiuixFloatingBottomBar(
                 Modifier
                     .fillMaxSize()
                     .then(interactiveHighlight.gestureModifier)
-                    .pointerInput(pages.size, tabWidthPx) {
+                    .pointerInput(pages.size, tabWidthPx, isLtr) {
                         val touchSlop = viewConfiguration.touchSlop
                         val maxIndex = (pages.lastIndex).toFloat()
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)
                             val downX = down.position.x
-                            val tabIndex = floor((downX - horizontalInsetPx) / tabWidthPx)
+                            val tabIndex = (if (isLtr) {
+                                floor((downX - horizontalInsetPx) / tabWidthPx)
+                            } else {
+                                floor((size.width - horizontalInsetPx - downX) / tabWidthPx)
+                            })
                                 .toInt()
                                 .coerceIn(0, pages.lastIndex)
-                            val currentThumbCenter = horizontalInsetPx +
-                                (selectorAnimation.value + 0.5f) * tabWidthPx
+                            val currentThumbCenter = if (isLtr) {
+                                horizontalInsetPx + (selectorAnimation.value + 0.5f) * tabWidthPx
+                            } else {
+                                size.width - horizontalInsetPx -
+                                    (selectorAnimation.value + 0.5f) * tabWidthPx
+                            }
                             var dragging = abs(downX - currentThumbCenter) <= tabWidthPx * 0.55f
                             selectorAnimation.press()
                             if (!dragging) selectorAnimation.animateToValueKeepingPress(tabIndex.toFloat())
                             var lastX = downX
                             while (true) {
-                                val event = awaitPointerEvent()
+                                val event = awaitPointerEvent(PointerEventPass.Main)
                                 val change = event.changes.firstOrNull { it.id == down.id }
-                                    ?: break
-                                if (!change.pressed) {
-                                    if (dragging) {
-                                        val target = selectorAnimation.targetValue
+                                if (change == null || !change.pressed) {
+                                    val target = if (dragging) {
+                                        selectorAnimation.targetValue
                                             .roundToInt()
                                             .coerceIn(0, pages.lastIndex)
-                                        if (target != selectedIndex) {
-                                            onPageSelected(pages[target])
-                                        }
-                                        selectorAnimation.animateToValue(target.toFloat())
-                                    } else if (
-                                        change.position.x < 0f ||
-                                        change.position.x > size.width ||
-                                        change.position.y < 0f ||
-                                        change.position.y > size.height
-                                    ) {
-                                        selectorAnimation.animateToValue(selectedIndex.toFloat())
                                     } else {
-                                        onPageSelected(pages[tabIndex])
-                                        selectorAnimation.release()
+                                        tabIndex
+                                    }
+                                    if (target != latestSelectedIndex.value) onPageSelected(pages[target])
+                                    selectorAnimation.animateToValue(target.toFloat())
+                                    selectorAnimation.release()
+                                    animationScope.launch {
+                                        offsetAnimation.animateTo(0f, spring(1f, 300f, 0.5f))
                                     }
                                     break
                                 }
@@ -322,17 +364,21 @@ internal fun MiuixFloatingBottomBar(
                                 val totalDx = change.position.x - downX
                                 if (!dragging && abs(totalDx) > touchSlop) {
                                     dragging = true
+                                    lastX = change.position.x
                                 }
                                 if (dragging && abs(dx) > 0.01f) {
                                     lastX = change.position.x
                                     selectorAnimation.updateValue(
-                                        (selectorAnimation.targetValue + dx / tabWidthPx)
+                                        (selectorAnimation.targetValue + dx / tabWidthPx * ltrSign)
                                             .coerceIn(0f, maxIndex)
                                     )
-                                    change.consume()
+                                    animationScope.launch {
+                                        offsetAnimation.snapTo(offsetAnimation.value + dx)
+                                    }
                                 } else {
                                     lastX = change.position.x
                                 }
+                                change.consume()
                             }
 
                         }
@@ -395,97 +441,3 @@ private fun NavigationTabsContent(
         }
     }
 }
-
-private val AppPage.navigationIcon: ImageVector
-    get() = when (this) {
-        AppPage.HOME -> YumerinHomeIcon
-        AppPage.EXPLORE -> YumerinCharacterIcon
-        AppPage.PROFILE -> YumerinProfileIcon
-    }
-
-private val YumerinHomeIcon = ImageVector.Builder(
-    name = "YumerinHomeIcon",
-    defaultWidth = 24.dp,
-    defaultHeight = 24.dp,
-    viewportWidth = 24f,
-    viewportHeight = 24f
-).apply {
-    path(fill = SolidColor(Color.Black)) {
-        moveTo(12f, 3f)
-        lineTo(2f, 11f)
-        lineTo(4f, 11f)
-        lineTo(4f, 21f)
-        lineTo(10f, 21f)
-        lineTo(10f, 14f)
-        lineTo(14f, 14f)
-        lineTo(14f, 21f)
-        lineTo(20f, 21f)
-        lineTo(20f, 11f)
-        lineTo(22f, 11f)
-        close()
-    }
-}.build()
-
-private val YumerinCharacterIcon = ImageVector.Builder(
-    name = "YumerinCharacterIcon",
-    defaultWidth = 24.dp,
-    defaultHeight = 24.dp,
-    viewportWidth = 24f,
-    viewportHeight = 24f
-).apply {
-    path(fill = SolidColor(Color.Black)) {
-        moveTo(8f, 11f)
-        curveTo(10.21f, 11f, 12f, 9.21f, 12f, 7f)
-        curveTo(12f, 4.79f, 10.21f, 3f, 8f, 3f)
-        curveTo(5.79f, 3f, 4f, 4.79f, 4f, 7f)
-        curveTo(4f, 9.21f, 5.79f, 11f, 8f, 11f)
-        close()
-        moveTo(16.5f, 11f)
-        curveTo(18.43f, 11f, 20f, 9.43f, 20f, 7.5f)
-        curveTo(20f, 5.57f, 18.43f, 4f, 16.5f, 4f)
-        curveTo(15.87f, 4f, 15.29f, 4.17f, 14.78f, 4.46f)
-        curveTo(15.32f, 5.17f, 15.67f, 6.05f, 15.67f, 7f)
-        curveTo(15.67f, 8.35f, 15.08f, 9.56f, 14.14f, 10.4f)
-        curveTo(14.8f, 10.78f, 15.61f, 11f, 16.5f, 11f)
-        close()
-        moveTo(8f, 13f)
-        curveTo(4.13f, 13f, 1f, 15f, 1f, 17.5f)
-        lineTo(1f, 21f)
-        lineTo(15f, 21f)
-        lineTo(15f, 17.5f)
-        curveTo(15f, 15f, 11.87f, 13f, 8f, 13f)
-        close()
-        moveTo(16.5f, 13f)
-        curveTo(15.93f, 13f, 15.39f, 13.05f, 14.87f, 13.14f)
-        curveTo(16.22f, 14.13f, 17f, 15.47f, 17f, 17f)
-        lineTo(17f, 21f)
-        lineTo(23f, 21f)
-        lineTo(23f, 17.5f)
-        curveTo(23f, 15f, 20.1f, 13f, 16.5f, 13f)
-        close()
-    }
-}.build()
-
-private val YumerinProfileIcon = ImageVector.Builder(
-    name = "YumerinProfileIcon",
-    defaultWidth = 24.dp,
-    defaultHeight = 24.dp,
-    viewportWidth = 24f,
-    viewportHeight = 24f
-).apply {
-    path(fill = SolidColor(Color.Black)) {
-        moveTo(12f, 12f)
-        curveTo(14.761f, 12f, 17f, 9.761f, 17f, 7f)
-        curveTo(17f, 4.239f, 14.761f, 2f, 12f, 2f)
-        curveTo(9.239f, 2f, 7f, 4.239f, 7f, 7f)
-        curveTo(7f, 9.761f, 9.239f, 12f, 12f, 12f)
-        close()
-        moveTo(12f, 14f)
-        curveTo(7.581f, 14f, 4f, 16.239f, 4f, 19f)
-        lineTo(4f, 22f)
-        lineTo(20f, 22f)
-        lineTo(20f, 19f)
-        curveTo(20f, 16.239f, 16.419f, 14f, 12f, 14f)
-        close()
-    }
-}.build()

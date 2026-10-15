@@ -9,6 +9,7 @@ import com.lhy.yumerin.data.local.*
 import com.lhy.yumerin.data.memory.DefaultCompanionSeed
 import com.lhy.yumerin.data.portable.RoomPortableDataManager
 import com.lhy.yumerin.data.remote.AndroidAgentService
+import com.lhy.yumerin.data.remote.AndroidModelConfigurationTester
 import com.lhy.yumerin.domain.agent.AgentAdmissionArbiter
 import com.lhy.yumerin.domain.AppGraph
 import com.lhy.yumerin.domain.background.AgentGoalScheduler
@@ -33,6 +34,7 @@ class RoomAppGraph(
     override val groups: GroupRepository = RoomGroupRepository(database)
     override val memories: MemoryRepository = RoomMemoryRepository(database)
     override val models: ModelProfileRepository = RoomModelProfileRepository(database)
+    override val modelConfigurationTester = AndroidModelConfigurationTester()
     override val settings: SettingsRepository = RoomSettingsRepository(database)
     override val groupMemberships: GroupMembershipRepository = RoomGroupMembershipRepository(database)
     override val schedules: CompanionScheduleRepository = RoomCompanionScheduleRepository(database)

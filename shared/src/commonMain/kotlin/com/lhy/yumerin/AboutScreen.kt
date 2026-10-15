@@ -20,14 +20,10 @@ import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.*
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.kyant.backdrop.Backdrop
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.lhy.yumerin.core.model.*
 import com.lhy.yumerin.data.memory.*
 import com.lhy.yumerin.designsystem.*
 import com.lhy.yumerin.domain.*
-import com.lhy.yumerin.domain.agent.*
 import com.lhy.yumerin.domain.memory.*
 import com.lhy.yumerin.domain.repository.*
 import com.lhy.yumerin.domain.usecase.*
@@ -37,7 +33,6 @@ import kotlin.time.Clock
 
 @Composable
 internal fun AboutPage(
-    backdrop: Backdrop,
     appIcon: ImageBitmap?,
     onBack: () -> Unit
 ) {
@@ -46,10 +41,10 @@ internal fun AboutPage(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            GlassBackButton(backdrop = backdrop, onClick = onBack)
+            MiuixBackButton(onClick = onBack)
             Text("关于", style = MaterialTheme.typography.headlineLarge)
         }
-        GlassSurface(backdrop, Modifier.fillMaxWidth()) {
+        MiuixCardSurface(Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -75,21 +70,21 @@ internal fun AboutPage(
                 )
             }
         }
-        GlassSurface(backdrop, Modifier.fillMaxWidth()) {
+        MiuixCardSurface(Modifier.fillMaxWidth()) {
             Column(Modifier.fillMaxWidth()) {
                 SettingRow("应用", "Yumerin")
                 SettingRow("版本", "1.0.0")
-                SettingRow("组件库", "AndroidLiquidGlass")
+                SettingRow("组件库", "Miuix")
                 SettingRow("开发框架", "Kotlin Multiplatform + Compose")
                 SettingRow("许可证总览", "Apache License 2.0")
             }
         }
-        GlassSurface(backdrop, Modifier.fillMaxWidth()) {
+        MiuixCardSurface(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("开源许可证", style = MaterialTheme.typography.titleLarge)
                 Text("本应用不把用户 API Key 或本地模型文件放进导出包；以下是运行时主要开源组件。")
                 listOf(
-                    "AndroidLiquidGlass" to "Apache License 2.0",
+                    "Miuix" to "Apache License 2.0",
                     "Kotlin / Compose Multiplatform" to "Apache License 2.0",
                     "LiteRT-LM" to "Apache License 2.0",
                     "Room / WorkManager" to "Apache License 2.0",

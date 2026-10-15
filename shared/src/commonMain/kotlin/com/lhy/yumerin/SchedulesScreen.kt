@@ -20,7 +20,6 @@ import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.*
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.kyant.backdrop.Backdrop
 import com.lhy.yumerin.core.model.*
 import com.lhy.yumerin.data.memory.*
 import com.lhy.yumerin.designsystem.*
@@ -31,10 +30,12 @@ import com.lhy.yumerin.domain.usecase.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlin.time.Clock
+import top.yukonga.miuix.kmp.basic.DropdownEntry
+import top.yukonga.miuix.kmp.basic.DropdownItem
+import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
 
 @Composable
 internal fun SchedulesPage(
-    backdrop: Backdrop,
     graph: AppGraph,
     characters: List<CharacterProfile>,
     chats: List<ChatThread>,
@@ -62,43 +63,67 @@ internal fun SchedulesPage(
     var delegatedFeedback by remember { mutableStateOf<String?>(null) }
     var delegatedAnswers by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
 
+    MiuixScaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = Color.Transparent
+    ) { _ ->
     PageColumn {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            GlassBackButton(backdrop = backdrop, onClick = onBack)
+            MiuixBackButton(onClick = onBack)
             Text("计划与目标", style = MaterialTheme.typography.headlineLarge)
         }
         Text("周期计划需要开启全局和角色主动开关；一次性互动需要开启全局开关。明确委托的目标独立运行。静默时段或关闭通知权限只会隐藏提醒，不删除聊天消息。")
-        GlassSurface(backdrop, Modifier.fillMaxWidth()) {
+        MiuixCardSurface(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("新建计划", style = MaterialTheme.typography.titleLarge)
                 OutlinedTextField(title, { title = it }, Modifier.fillMaxWidth(), label = { Text("计划名称") }, singleLine = true)
                 OutlinedTextField(prompt, { prompt = it }, Modifier.fillMaxWidth(), label = { Text("互动提示") })
                 OutlinedTextField(hour, { hour = it }, Modifier.fillMaxWidth(), label = { Text("小时（0-23）") }, singleLine = true)
                 OutlinedTextField(minute, { minute = it }, Modifier.fillMaxWidth(), label = { Text("分钟（0-59）") }, singleLine = true)
-                Text("角色：${characters.firstOrNull { it.id == characterId }?.name ?: "未选择"}")
-                characters.forEach { character ->
-                    val characterChat = chats.firstOrNull { it.kind == ChatKind.DIRECT && it.characterId == character.id }
-                    Row(Modifier.fillMaxWidth().clickable {
-                        characterId = character.id
-                        chatId = characterChat?.id
-                    }, verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(character.id == characterId, {
-                            characterId = character.id
-                            chatId = characterChat?.id
-                        })
-                        Text(character.name)
-                    }
-                }
                 val directChats = chats.filter { it.kind == ChatKind.DIRECT && it.characterId == characterId }
-                Text("聊天：${directChats.firstOrNull { it.id == chatId }?.title ?: "未选择"}")
-                directChats.forEach { chat ->
-                    Row(Modifier.fillMaxWidth().clickable { chatId = chat.id }, verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(chat.id == chatId, { chatId = chat.id })
-                        Text(chat.title)
-                    }
+                if (characters.isNotEmpty()) {
+                    OverlayDropdownMenu(
+                        entry = DropdownEntry(
+                            items = characters.map { character ->
+                                DropdownItem(
+                                    text = character.name,
+                                    selected = character.id == characterId,
+                                    onClick = {
+                                        characterId = character.id
+                                        chatId = chats.firstOrNull {
+                                            it.kind == ChatKind.DIRECT && it.characterId == character.id
+                                        }?.id
+                                    }
+                                )
+                            }
+                        ),
+                        title = "角色",
+                        modifier = Modifier.fillMaxWidth(),
+                        renderInRootScaffold = false
+                    )
+                } else {
+                    Text("角色：未选择")
+                }
+                if (directChats.isNotEmpty()) {
+                    OverlayDropdownMenu(
+                        entry = DropdownEntry(
+                            items = directChats.map { chat ->
+                                DropdownItem(
+                                    text = chat.title,
+                                    selected = chat.id == chatId,
+                                    onClick = { chatId = chat.id }
+                                )
+                            }
+                        ),
+                        title = "聊天",
+                        modifier = Modifier.fillMaxWidth(),
+                        renderInRootScaffold = false
+                    )
+                } else {
+                    Text("聊天：未选择")
                 }
                 Button(
                     onClick = {
@@ -127,7 +152,7 @@ internal fun SchedulesPage(
                 ) { Text("保存计划") }
             }
         }
-        GlassSurface(backdrop, Modifier.fillMaxWidth()) {
+        MiuixCardSurface(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("一次性目标", style = MaterialTheme.typography.titleLarge)
                 Text("安排角色在指定延迟后主动完成一次轻量互动。目标只生成普通聊天消息，不会执行外部操作。")
@@ -178,7 +203,7 @@ internal fun SchedulesPage(
             }
         }
         agentGoals.filter { it.status != AgentGoalStatus.CANCELLED }.forEach { goal ->
-            GlassSurface(backdrop, Modifier.fillMaxWidth()) {
+            MiuixCardSurface(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(goal.title, style = MaterialTheme.typography.titleMedium)
                     val remainingMinutes = ((goal.dueAt - nowMillis()).coerceAtLeast(0L) / 60_000L)
@@ -196,7 +221,7 @@ internal fun SchedulesPage(
                 }
             }
         }
-        GlassSurface(backdrop, Modifier.fillMaxWidth()) {
+        MiuixCardSurface(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("委托目标", style = MaterialTheme.typography.titleLarge)
                 Text("描述你希望达成的结果。Agent 会把它拆成最多 6 步，后台逐步处理；需要你补充信息时会暂停等待。明确委托的目标不受全局主动消息开关限制，后台执行尽力而为；当前可用能力以应用内已接入的模块为限。")
@@ -238,7 +263,7 @@ internal fun SchedulesPage(
             }
         }
         delegatedGoals.filter { it.status != DelegatedAgentGoalStatus.CANCELLED }.forEach { goal ->
-            GlassSurface(backdrop, Modifier.fillMaxWidth()) {
+            MiuixCardSurface(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Text(goal.title, style = MaterialTheme.typography.titleMedium)
                     Text("${delegatedGoalStatusLabel(goal.status)} · ${goal.outcome}")
@@ -287,7 +312,7 @@ internal fun SchedulesPage(
             }
         }
         schedules.forEach { schedule ->
-            GlassSurface(backdrop, Modifier.fillMaxWidth()) {
+            MiuixCardSurface(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(schedule.title, style = MaterialTheme.typography.titleMedium)
                     Text("每天 ${schedule.hour.pad2()}:${schedule.minute.pad2()} · ${schedule.prompt}")
@@ -301,6 +326,7 @@ internal fun SchedulesPage(
                 }
             }
         }
+    }
     }
 }
 

@@ -29,6 +29,8 @@ import com.lhy.yumerin.domain.repository.CredentialStore
 import com.lhy.yumerin.domain.repository.GroupRepository
 import com.lhy.yumerin.domain.repository.MemoryRepository
 import com.lhy.yumerin.domain.repository.ModelProfileRepository
+import com.lhy.yumerin.domain.repository.ModelConfigurationTester
+import com.lhy.yumerin.domain.repository.ModelConfigurationTestResult
 import com.lhy.yumerin.domain.repository.SettingsRepository
 import com.lhy.yumerin.domain.repository.CompanionScheduleRepository
 import com.lhy.yumerin.domain.repository.CharacterRuntimeStateRepository
@@ -55,6 +57,14 @@ class InMemoryAppGraph : AppGraph {
     override val groups: GroupRepository = InMemoryGroupRepository()
     override val memories: MemoryRepository = InMemoryMemoryRepository()
     override val models: ModelProfileRepository = InMemoryModelProfileRepository()
+    override val modelConfigurationTester: ModelConfigurationTester = object : ModelConfigurationTester {
+        override suspend fun testRemote(baseUrl: String, modelId: String, apiKey: String) =
+            ModelConfigurationTestResult(
+                connectionSucceeded = false,
+                toolCallsSupported = null,
+                message = "当前预览环境不支持远程模型测试。"
+            )
+    }
     override val settings: SettingsRepository = InMemorySettingsRepository()
     override val groupMemberships: GroupMembershipRepository = InMemoryGroupMembershipRepository()
     override val schedules: CompanionScheduleRepository = InMemoryCompanionScheduleRepository()

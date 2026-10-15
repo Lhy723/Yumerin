@@ -10,7 +10,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.backdrops.layerBackdrop
@@ -25,6 +24,7 @@ import com.lhy.yumerin.designsystem.isSystemReducedMotion
 import com.lhy.yumerin.domain.AppGraph
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
+import top.yukonga.miuix.kmp.theme.Colors
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.ThemeController
 
@@ -32,8 +32,9 @@ internal enum class AppPage(
     val label: String
 ) {
     HOME("聊天"),
-    EXPLORE("角色"),
-    PROFILE("我的")
+    EXPLORE("联系人"),
+    SETTINGS("设置"),
+    PROFILE("个人资料")
 }
 
 private sealed interface AppDestination {
@@ -43,6 +44,10 @@ private sealed interface AppDestination {
     data class USER_PROFILE(val returnTo: AppDestination = PROFILE) : AppDestination
     data class CHAT_DETAIL(val chatId: EntityId) : AppDestination
     data class CHAT_SETTINGS(val chatId: EntityId) : AppDestination
+    data class CHARACTER_PROFILE(
+        val characterId: EntityId,
+        val returnTo: AppDestination = CHARACTERS
+    ) : AppDestination
     data class CHARACTER_EDITOR(
         val characterId: EntityId?,
         val returnTo: AppDestination = CHARACTERS
@@ -53,10 +58,11 @@ private sealed interface AppDestination {
     ) : AppDestination
     data class GROUP_EDITOR(val groupId: EntityId? = null) : AppDestination
     data object SETTINGS : AppDestination
+    data class SETTINGS_CATEGORY(val category: SettingsCategory) : AppDestination
     data object CHARACTER_CONTINUITY_LIST : AppDestination
     data class CHARACTER_CONTINUITY(val characterId: EntityId) : AppDestination
     data object MODELS : AppDestination
-    data object ABOUT : AppDestination
+    data class ABOUT(val returnTo: AppDestination = PROFILE) : AppDestination
     data object SCHEDULES : AppDestination
     data object DATA_MANAGEMENT : AppDestination
 }
@@ -65,6 +71,7 @@ private val AppDestination.bottomPage: AppPage?
     get() = when (this) {
         AppDestination.CHAT_LIST -> AppPage.HOME
         AppDestination.CHARACTERS -> AppPage.EXPLORE
+        AppDestination.SETTINGS -> AppPage.SETTINGS
         AppDestination.PROFILE -> AppPage.PROFILE
         else -> null
     }
@@ -72,6 +79,7 @@ private val AppDestination.bottomPage: AppPage?
 private fun AppPage.toDestination(): AppDestination = when (this) {
     AppPage.HOME -> AppDestination.CHAT_LIST
     AppPage.EXPLORE -> AppDestination.CHARACTERS
+    AppPage.SETTINGS -> AppDestination.SETTINGS
     AppPage.PROFILE -> AppDestination.PROFILE
 }
 
@@ -82,16 +90,18 @@ private fun AppDestination.rank(): Int = when (this) {
     is AppDestination.USER_PROFILE -> 3
     is AppDestination.CHAT_DETAIL -> 4
     is AppDestination.CHAT_SETTINGS -> 5
-    is AppDestination.CHARACTER_EDITOR -> 6
-    is AppDestination.MEMORIES -> 7
-    is AppDestination.GROUP_EDITOR -> 8
-    AppDestination.SETTINGS -> 9
-    AppDestination.CHARACTER_CONTINUITY_LIST -> 14
-    is AppDestination.CHARACTER_CONTINUITY -> 15
-    AppDestination.MODELS -> 10
-    AppDestination.ABOUT -> 11
-    AppDestination.SCHEDULES -> 12
-    AppDestination.DATA_MANAGEMENT -> 13
+    is AppDestination.CHARACTER_PROFILE -> 6
+    is AppDestination.CHARACTER_EDITOR -> 7
+    is AppDestination.MEMORIES -> 8
+    is AppDestination.GROUP_EDITOR -> 9
+    AppDestination.SETTINGS -> 10
+    is AppDestination.SETTINGS_CATEGORY -> 11
+    AppDestination.MODELS -> 12
+    is AppDestination.ABOUT -> 13
+    AppDestination.SCHEDULES -> 14
+    AppDestination.DATA_MANAGEMENT -> 15
+    AppDestination.CHARACTER_CONTINUITY_LIST -> 16
+    is AppDestination.CHARACTER_CONTINUITY -> 17
 }
 
 @Composable
@@ -104,7 +114,8 @@ fun App(
     onExportData: (String) -> Unit = {},
     onImportDataRequest: ((onPayload: (String) -> Unit) -> Unit) = {},
     onPickAvatar: ((onSelected: (String?) -> Unit) -> Unit) = { onSelected -> onSelected(null) },
-    onPickLocalModel: ((onSelected: (String?) -> Unit) -> Unit) = { onSelected -> onSelected(null) }
+    onPickLocalModel: ((onSelected: (String?) -> Unit) -> Unit) = { onSelected -> onSelected(null) },
+    skipAdultConfirmationForDebug: Boolean = false
 ) {
     val graph = appGraph ?: remember { InMemoryAppGraph() }
     val settings by graph.settings.observeSettings().collectAsState(AppSettings())
@@ -121,22 +132,24 @@ fun App(
         ThemeMode.DARK -> true
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
+    val themeColors = remember(settings.themeColor) { settings.themeColor.colorSchemes() }
 
-    val themeController = remember(isDarkTheme) {
+    val themeController = remember(isDarkTheme, themeColors) {
         ThemeController(
-            colorSchemeMode = if (isDarkTheme) ColorSchemeMode.MonetDark else ColorSchemeMode.MonetLight,
-            keyColor = Color(0xFF6659B8)
+            colorSchemeMode = if (isDarkTheme) ColorSchemeMode.Dark else ColorSchemeMode.Light,
+            lightColors = themeColors.light,
+            darkColors = themeColors.dark
         )
     }
 
     MiuixTheme(controller = themeController) {
         MaterialTheme(
-            colorScheme = if (isDarkTheme) yumerinDarkColorScheme() else yumerinLightColorScheme()
+            colorScheme = MiuixTheme.colorScheme.toMaterialColorScheme(isDarkTheme)
         ) {
             Surface(
                 modifier = Modifier.fillMaxSize(),
-                color = MaterialTheme.colorScheme.background,
-                contentColor = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface
             ) {
                 AppContent(
                     graph = graph,
@@ -149,58 +162,93 @@ fun App(
                     onExportData = onExportData,
                     onImportDataRequest = onImportDataRequest,
                     onPickAvatar = onPickAvatar,
-                    onPickLocalModel = onPickLocalModel
+                    onPickLocalModel = onPickLocalModel,
+                    skipAdultConfirmationForDebug = skipAdultConfirmationForDebug
                 )
             }
         }
     }
 }
 
-private fun yumerinLightColorScheme() = lightColorScheme(
-    primary = Color(0xFF5F55A8),
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFFE7E3FF),
-    onPrimaryContainer = Color(0xFF211A55),
-    secondary = Color(0xFF625B71),
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xFFE8E1F1),
-    onSecondaryContainer = Color(0xFF201A2C),
-    tertiary = Color(0xFF8A5268),
-    onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFFFD9E5),
-    onTertiaryContainer = Color(0xFF391020),
-    background = Color(0xFFF6F4FA),
-    onBackground = Color(0xFF201E27),
-    surface = Color(0xFFFFFBFF),
-    onSurface = Color(0xFF201E27),
-    surfaceVariant = Color(0xFFEAE7F1),
-    onSurfaceVariant = Color(0xFF4D4957),
-    outline = Color(0xFF7C7787),
-    outlineVariant = Color(0xFFCAC5D3)
-)
-
-private fun yumerinDarkColorScheme() = darkColorScheme(
-    primary = Color(0xFFC9C1FF),
-    onPrimary = Color(0xFF30256C),
-    primaryContainer = Color(0xFF494184),
-    onPrimaryContainer = Color(0xFFE7E3FF),
-    secondary = Color(0xFFCBC3D9),
-    onSecondary = Color(0xFF332D40),
-    secondaryContainer = Color(0xFF4A4357),
-    onSecondaryContainer = Color(0xFFE8E1F1),
-    tertiary = Color(0xFFFFB1CA),
-    onTertiary = Color(0xFF521D34),
-    tertiaryContainer = Color(0xFF6E354B),
-    onTertiaryContainer = Color(0xFFFFD9E5),
-    background = Color(0xFF15131A),
-    onBackground = Color(0xFFE8E2EE),
-    surface = Color(0xFF1D1A23),
-    onSurface = Color(0xFFE8E2EE),
-    surfaceVariant = Color(0xFF2C2833),
-    onSurfaceVariant = Color(0xFFCBC4D3),
-    outline = Color(0xFF948D9E),
-    outlineVariant = Color(0xFF494450)
-)
+private fun Colors.toMaterialColorScheme(isDark: Boolean) = if (isDark) {
+    darkColorScheme(
+        primary = primary,
+        onPrimary = onPrimary,
+        primaryContainer = primaryContainer,
+        onPrimaryContainer = onPrimaryContainer,
+        secondary = secondary,
+        onSecondary = onSecondary,
+        secondaryContainer = secondaryContainer,
+        onSecondaryContainer = onSecondaryContainer,
+        tertiary = primaryVariant,
+        onTertiary = onPrimaryVariant,
+        tertiaryContainer = tertiaryContainer,
+        onTertiaryContainer = onTertiaryContainer,
+        error = error,
+        onError = onError,
+        errorContainer = errorContainer,
+        onErrorContainer = onErrorContainer,
+        background = background,
+        onBackground = onBackground,
+        surface = surface,
+        onSurface = onSurface,
+        surfaceVariant = surfaceVariant,
+        onSurfaceVariant = onSurfaceVariantSummary,
+        outline = outline,
+        outlineVariant = dividerLine,
+        inverseSurface = onSurface,
+        inverseOnSurface = surface,
+        inversePrimary = primaryVariant,
+        scrim = windowDimming,
+        surfaceTint = surface,
+        surfaceDim = surfaceVariant,
+        surfaceBright = surface,
+        surfaceContainerLowest = surface,
+        surfaceContainerLow = surfaceContainer,
+        surfaceContainer = surfaceContainer,
+        surfaceContainerHigh = surfaceContainerHigh,
+        surfaceContainerHighest = surfaceContainerHighest
+    )
+} else {
+    lightColorScheme(
+        primary = primary,
+        onPrimary = onPrimary,
+        primaryContainer = primaryContainer,
+        onPrimaryContainer = onPrimaryContainer,
+        secondary = secondary,
+        onSecondary = onSecondary,
+        secondaryContainer = secondaryContainer,
+        onSecondaryContainer = onSecondaryContainer,
+        tertiary = primaryVariant,
+        onTertiary = onPrimaryVariant,
+        tertiaryContainer = tertiaryContainer,
+        onTertiaryContainer = onTertiaryContainer,
+        error = error,
+        onError = onError,
+        errorContainer = errorContainer,
+        onErrorContainer = onErrorContainer,
+        background = background,
+        onBackground = onBackground,
+        surface = surface,
+        onSurface = onSurface,
+        surfaceVariant = surfaceVariant,
+        onSurfaceVariant = onSurfaceVariantSummary,
+        outline = outline,
+        outlineVariant = dividerLine,
+        inverseSurface = onSurface,
+        inverseOnSurface = surface,
+        inversePrimary = primaryVariant,
+        scrim = windowDimming,
+        surfaceTint = surface,
+        surfaceDim = surfaceVariant,
+        surfaceBright = surface,
+        surfaceContainerLowest = surface,
+        surfaceContainerLow = surfaceContainer,
+        surfaceContainer = surfaceContainer,
+        surfaceContainerHigh = surfaceContainerHigh,
+        surfaceContainerHighest = surfaceContainerHighest
+    )
+}
 
 @Composable
 private fun AppContent(
@@ -214,11 +262,12 @@ private fun AppContent(
     onExportData: (String) -> Unit,
     onImportDataRequest: ((onPayload: (String) -> Unit) -> Unit),
     onPickAvatar: ((onSelected: (String?) -> Unit) -> Unit),
-    onPickLocalModel: ((onSelected: (String?) -> Unit) -> Unit)
+    onPickLocalModel: ((onSelected: (String?) -> Unit) -> Unit),
+    skipAdultConfirmationForDebug: Boolean
 ) {
-    val backdrop = rememberLayerBackdrop()
     val navigationBackdrop = rememberLayerBackdrop()
-    val chats by graph.chats.observeChats().collectAsState(emptyList())
+    val glassButtonBackdrop = rememberLayerBackdrop()
+            val chats by graph.chats.observeChats().collectAsState(emptyList())
     val characters by graph.characters.observeCharacters().collectAsState(emptyList())
     val archivedCharacters by graph.characters.observeArchivedCharacters().collectAsState(emptyList())
     val allCharacters = remember(characters, archivedCharacters) {
@@ -241,15 +290,17 @@ private fun AppContent(
             destination = when (val current = destination) {
                 is AppDestination.CHAT_DETAIL -> AppDestination.CHAT_LIST
                 is AppDestination.CHAT_SETTINGS -> AppDestination.CHAT_DETAIL(current.chatId)
+                is AppDestination.CHARACTER_PROFILE -> current.returnTo
                 is AppDestination.CHARACTER_EDITOR -> current.returnTo
                 is AppDestination.MEMORIES -> current.returnTo
                 is AppDestination.GROUP_EDITOR -> AppDestination.CHAT_LIST
                 is AppDestination.USER_PROFILE -> current.returnTo
                 AppDestination.SETTINGS -> AppDestination.PROFILE
+                is AppDestination.SETTINGS_CATEGORY -> AppDestination.SETTINGS
                 AppDestination.CHARACTER_CONTINUITY_LIST -> AppDestination.SETTINGS
                 is AppDestination.CHARACTER_CONTINUITY -> AppDestination.CHARACTER_CONTINUITY_LIST
                 AppDestination.MODELS -> AppDestination.SETTINGS
-                AppDestination.ABOUT -> AppDestination.PROFILE
+                is AppDestination.ABOUT -> current.returnTo
                 AppDestination.SCHEDULES -> AppDestination.SETTINGS
                 AppDestination.DATA_MANAGEMENT -> AppDestination.SETTINGS
                 else -> AppDestination.CHAT_LIST
@@ -276,6 +327,7 @@ private fun AppContent(
                         graph.settings.saveSettings(updated)
                         if (backgroundChanged || proactiveChanged) {
                             graph.backgroundCompanion.setEnabled(updated.backgroundCompanionEnabled)
+                            graph.agentGoalScheduler.setEnabled(updated.proactiveMessagesEnabled)
                         }
                     }
                 }
@@ -283,6 +335,7 @@ private fun AppContent(
                 graph.settings.saveSettings(updated)
                 if (backgroundChanged || proactiveChanged) {
                     graph.backgroundCompanion.setEnabled(updated.backgroundCompanionEnabled)
+                    graph.agentGoalScheduler.setEnabled(updated.proactiveMessagesEnabled)
                 }
             }
         }
@@ -291,18 +344,18 @@ private fun AppContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(MaterialTheme.colorScheme.surface)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .layerBackdrop(backdrop)
+                .background(MaterialTheme.colorScheme.surface)
+                .layerBackdrop(glassButtonBackdrop)
         )
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .navigationBarsPadding()
         ) {
             Box(
                 modifier = Modifier
@@ -326,10 +379,18 @@ private fun AppContent(
                         targetState = destination,
                         modifier = Modifier.fillMaxSize(),
                         transitionSpec = {
-                            val direction = if (targetState.rank() >= initialState.rank()) {
-                                SlideDirection.Left
-                            } else {
-                                SlideDirection.Right
+                            val initialBottomPageIndex = initialState.bottomPage?.let(AppPage.entries::indexOf)
+                            val targetBottomPageIndex = targetState.bottomPage?.let(AppPage.entries::indexOf)
+                            val direction = when {
+                                initialBottomPageIndex != null && targetBottomPageIndex != null -> {
+                                    if (targetBottomPageIndex >= initialBottomPageIndex) {
+                                        SlideDirection.Left
+                                    } else {
+                                        SlideDirection.Right
+                                    }
+                                }
+                                targetState.rank() >= initialState.rank() -> SlideDirection.Left
+                                else -> SlideDirection.Right
                             }
                             (
                                 slideIntoContainer(
@@ -357,213 +418,270 @@ private fun AppContent(
                         },
                         label = "screen-transition"
                         ) { screen ->
-                            when (screen) {
-                            AppDestination.CHAT_LIST -> ChatListPage(
-                                backdrop = backdrop,
-                                chats = chats,
-                                characters = allCharacters,
-                                groups = groups,
-                                onOpenChat = {
-                                    scope.launch { graph.chats.markRead(it) }
-                                    destination = AppDestination.CHAT_DETAIL(it)
-                                },
-                                onTogglePinned = { chat ->
-                                    scope.launch { graph.chats.saveChat(chat.copy(pinned = !chat.pinned)) }
-                                },
-                                onToggleMuted = { chat ->
-                                    scope.launch { graph.chats.saveChat(chat.copy(muted = !chat.muted)) }
-                                },
-                                onMarkUnread = { chat ->
-                                    scope.launch { graph.chats.saveChat(chat.copy(unreadCount = maxOf(1, chat.unreadCount))) }
-                                },
-                                onDeleteChat = { chat -> scope.launch { useCases.deleteChat(chat.id) } },
-                                onCreateGroup = { destination = AppDestination.GROUP_EDITOR() },
-                                onEditGroup = { groupId -> destination = AppDestination.GROUP_EDITOR(groupId) }
-                            )
-                            AppDestination.CHARACTERS -> CharactersPage(
-                                backdrop = backdrop,
-                                characters = characters,
-                                archivedCharacters = archivedCharacters,
-                                onCreate = { destination = AppDestination.CHARACTER_EDITOR(null) },
-                                onEdit = { destination = AppDestination.CHARACTER_EDITOR(it) },
-                                onCreateChat = { character ->
-                                    scope.launch {
-                                        val chat = useCases.createDirectChat(character)
-                                        destination = AppDestination.CHAT_DETAIL(chat.id)
-                                    }
-                                }
-                            )
-                            AppDestination.PROFILE -> ProfilePage(
-                                backdrop = backdrop,
-                                settings = settings,
-                                onOpenSettings = { destination = AppDestination.SETTINGS },
-                                onOpenAbout = { destination = AppDestination.ABOUT },
-                                onOpenUserProfile = { destination = AppDestination.USER_PROFILE() }
-                            )
-                            is AppDestination.USER_PROFILE -> UserProfilePage(
-                                backdrop = backdrop,
-                                settings = settings,
-                                onSettingsChanged = ::updateSettings,
-                                onPickAvatar = onPickAvatar,
-                                onBack = { destination = screen.returnTo }
-                            )
-                            is AppDestination.CHAT_DETAIL -> ChatDetailPage(
-                                backdrop = backdrop,
-                                chatId = screen.chatId,
-                                chats = chats,
-                                characters = allCharacters,
-                                groups = groups,
-                                modelProfiles = modelProfiles,
-                                graph = graph,
-                                sendMessage = useCases.sendChatMessage,
-                                retryMessage = { messageId, currentSettings ->
-                                    useCases.retryChatResponse(messageId, currentSettings)
-                                },
-                                settings = settings,
-                                onBack = { destination = AppDestination.CHAT_LIST },
-                                onOpenModels = { destination = AppDestination.MODELS },
-                                onOpenChatSettings = { destination = AppDestination.CHAT_SETTINGS(screen.chatId) },
-                                onOpenCharacterProfile = { characterId ->
-                                    destination = AppDestination.CHARACTER_EDITOR(
-                                        characterId = characterId,
-                                        returnTo = AppDestination.CHAT_DETAIL(screen.chatId)
-                                    )
-                                },
-                                onOpenUserProfile = {
-                                    destination = AppDestination.USER_PROFILE(AppDestination.CHAT_DETAIL(screen.chatId))
-                                }
-                            )
-                            is AppDestination.CHAT_SETTINGS -> ChatSettingsPage(
-                                backdrop = backdrop,
-                                graph = graph,
-                                chatId = screen.chatId,
-                                chat = chats.firstOrNull { it.id == screen.chatId },
-                                characters = allCharacters,
-                                groups = groups,
-                                onChatChanged = { updated -> scope.launch { graph.chats.saveChat(updated) } },
-                                onBack = { destination = AppDestination.CHAT_DETAIL(screen.chatId) }
-                            )
-                            is AppDestination.CHARACTER_EDITOR -> CharacterEditorPage(
-                                backdrop = backdrop,
-                                existing = allCharacters.firstOrNull { it.id == screen.characterId },
-                                modelProfiles = modelProfiles,
-                                onBack = { destination = screen.returnTo },
-                                onPickAvatar = onPickAvatar,
-                                onOpenMemory = screen.characterId?.let { id ->
-                                    {
-                                        destination = AppDestination.MEMORIES(
-                                            characterId = id,
-                                            returnTo = AppDestination.CHARACTER_EDITOR(id, screen.returnTo)
-                                        )
-                                    }
-                                },
-                                onArchive = screen.characterId?.let { id ->
-                                    { archived -> scope.launch { useCases.archiveCharacter(id, archived) } }
-                                },
-                                onDelete = screen.characterId?.let { id ->
-                                    {
-                                        scope.launch {
-                                            useCases.deleteCharacter(id)
-                                            destination = screen.returnTo
+                            CompositionLocalProvider(LocalGlassButtonBackdrop provides glassButtonBackdrop) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .then(
+                                        if (screen.bottomPage == null) {
+                                            Modifier.navigationBarsPadding()
+                                        } else {
+                                            Modifier
                                         }
-                                    }
-                                },
-                                onSave = { character ->
-                                    scope.launch {
-                                        useCases.saveCharacter(character)
-                                        destination = screen.returnTo
-                                    }
-                                }
-                            )
-                            is AppDestination.MEMORIES -> MemoryPage(
-                                backdrop = backdrop,
-                                character = allCharacters.firstOrNull { it.id == screen.characterId },
-                                graph = graph,
-                                onBack = { destination = screen.returnTo }
-                            )
-                            is AppDestination.GROUP_EDITOR -> GroupEditorPage(
-                                backdrop = backdrop,
-                                graph = graph,
-                                existing = screen.groupId?.let { id -> groups.firstOrNull { it.id == id } },
-                                characters = characters,
-                                onPickAvatar = onPickAvatar,
-                                onBack = { destination = AppDestination.CHAT_LIST },
-                                onSave = { group ->
-                                    scope.launch {
-                                        if (screen.groupId == null) useCases.createGroupChat(group)
-                                        else useCases.updateGroupChat(group, group.memberCharacterIds.toSet())
-                                        destination = AppDestination.CHAT_LIST
-                                    }
-                                }
-                            )
-                            AppDestination.SETTINGS -> SettingsPage(
-                                backdrop = backdrop,
-                                settings = settings,
-                                onSettingsChanged = ::updateSettings,
-                                onOpenModels = { destination = AppDestination.MODELS },
-                                onOpenSchedules = { destination = AppDestination.SCHEDULES },
-                                onOpenDataManagement = { destination = AppDestination.DATA_MANAGEMENT },
-                                onOpenCharacterContinuity = { destination = AppDestination.CHARACTER_CONTINUITY_LIST },
-                                onBack = { destination = AppDestination.PROFILE }
-                            )
-                            AppDestination.CHARACTER_CONTINUITY_LIST -> CharacterContinuityListPage(
-                                characters = characters,
-                                onOpenCharacter = { id -> destination = AppDestination.CHARACTER_CONTINUITY(id) },
-                                onBack = { destination = AppDestination.SETTINGS }
-                            )
-                            is AppDestination.CHARACTER_CONTINUITY -> {
-                                val character = allCharacters.firstOrNull { it.id == screen.characterId }
-                                if (character == null) {
-                                    destination = AppDestination.CHARACTER_CONTINUITY_LIST
-                                } else {
-                                    val state by useCases.observeCharacterRuntimeState(screen.characterId).collectAsState(null)
-                                    CharacterContinuityPage(
-                                        character = character,
-                                        state = state?.let {
-                                            CharacterContinuityUiState(
-                                                moodValence = it.moodValence,
-                                                trust = it.trust,
-                                                closeness = it.closeness
+                                    )
+                            ) {
+                                when (screen) {
+                                    AppDestination.CHAT_LIST -> ChatListPage(
+                                                                                chats = chats,
+                                        characters = allCharacters,
+                                        groups = groups,
+                                        reducedMotion = reducedMotion,
+                                        onOpenChat = {
+                                            scope.launch { graph.chats.markRead(it) }
+                                            destination = AppDestination.CHAT_DETAIL(it)
+                                        },
+                                        onTogglePinned = { chat ->
+                                            scope.launch { graph.chats.saveChat(chat.copy(pinned = !chat.pinned)) }
+                                        },
+                                        onToggleMuted = { chat ->
+                                            scope.launch { graph.chats.saveChat(chat.copy(muted = !chat.muted)) }
+                                        },
+                                        onMarkUnread = { chat ->
+                                            scope.launch { graph.chats.saveChat(chat.copy(unreadCount = maxOf(1, chat.unreadCount))) }
+                                        },
+                                        onDeleteChat = { chat -> scope.launch { useCases.deleteChat(chat.id) } },
+                                        onCreateGroup = { destination = AppDestination.GROUP_EDITOR() },
+                                        onEditGroup = { groupId -> destination = AppDestination.GROUP_EDITOR(groupId) }
+                                    )
+                                    AppDestination.CHARACTERS -> CharactersPage(
+                                                                                characters = characters,
+                                        archivedCharacters = archivedCharacters,
+                                        onCreate = { destination = AppDestination.CHARACTER_EDITOR(null) },
+                                        onOpenProfile = { characterId ->
+                                            destination = AppDestination.CHARACTER_PROFILE(characterId)
+                                        },
+                                        onEdit = { destination = AppDestination.CHARACTER_EDITOR(it) },
+                                        onCreateChat = { character ->
+                                            scope.launch {
+                                                val chat = useCases.createDirectChat(character)
+                                                destination = AppDestination.CHAT_DETAIL(chat.id)
+                                            }
+                                        }
+                                    )
+                                    AppDestination.PROFILE -> ProfilePage(
+                                                                                settings = settings,
+                                        onPickAvatar = onPickAvatar,
+                                        onSettingsChanged = ::updateSettings,
+                                        onOpenSettings = { destination = AppDestination.SETTINGS },
+                                        onOpenAbout = { destination = AppDestination.ABOUT() },
+                                        onOpenUserProfile = { destination = AppDestination.USER_PROFILE() }
+                                    )
+                                    is AppDestination.USER_PROFILE -> UserProfilePage(
+                                                                                settings = settings,
+                                        onSettingsChanged = ::updateSettings,
+                                        onPickAvatar = onPickAvatar,
+                                        onBack = { destination = screen.returnTo }
+                                    )
+                                    is AppDestination.CHAT_DETAIL -> ChatDetailPage(
+                                                                                chatId = screen.chatId,
+                                        chats = chats,
+                                        characters = allCharacters,
+                                        groups = groups,
+                                        modelProfiles = modelProfiles,
+                                        graph = graph,
+                                        sendMessage = useCases.sendChatMessage,
+                                        retryMessage = { messageId, currentSettings ->
+                                            useCases.retryChatResponse(messageId, currentSettings)
+                                        },
+                                        settings = settings,
+                                        onBack = { destination = AppDestination.CHAT_LIST },
+                                        onOpenModels = { destination = AppDestination.MODELS },
+                                        onOpenChatSettings = { destination = AppDestination.CHAT_SETTINGS(screen.chatId) },
+                                        onOpenCharacterProfile = { characterId ->
+                                            destination = AppDestination.CHARACTER_PROFILE(
+                                                characterId = characterId,
+                                                returnTo = AppDestination.CHAT_DETAIL(screen.chatId)
                                             )
                                         },
-                                        onSave = { mood, trust, closeness ->
-                                            scope.launch {
-                                                useCases.updateCharacterContinuity(screen.characterId, mood, trust, closeness)
+                                        onOpenUserProfile = {
+                                            destination = AppDestination.USER_PROFILE(AppDestination.CHAT_DETAIL(screen.chatId))
+                                        }
+                                    )
+                                    is AppDestination.CHARACTER_PROFILE -> CharacterDetailPage(
+                                                                                character = allCharacters.firstOrNull { it.id == screen.characterId },
+                                        groups = groups,
+                                        chats = chats,
+                                        onBack = { destination = screen.returnTo },
+                                        onOpenChat = {
+                                            val character = allCharacters.firstOrNull { it.id == screen.characterId }
+                                            if (character != null) {
+                                                val directChat = chats
+                                                    .filter { it.characterId == character.id && it.deletedAt == null }
+                                                    .maxByOrNull { it.lastActivityAt }
+                                                if (directChat != null) {
+                                                    destination = AppDestination.CHAT_DETAIL(directChat.id)
+                                                } else if (!character.archived) {
+                                                    scope.launch {
+                                                        val chat = useCases.createDirectChat(character)
+                                                        destination = AppDestination.CHAT_DETAIL(chat.id)
+                                                    }
+                                                }
                                             }
                                         },
-                                        onBack = { destination = AppDestination.CHARACTER_CONTINUITY_LIST }
+                                        onOpenMemory = {
+                                            destination = AppDestination.MEMORIES(
+                                                characterId = screen.characterId,
+                                                returnTo = screen
+                                            )
+                                        },
+                                        onEdit = {
+                                            destination = AppDestination.CHARACTER_EDITOR(
+                                                characterId = screen.characterId,
+                                                returnTo = screen
+                                            )
+                                        },
+                                        onOpenGroup = { groupId ->
+                                            val groupChat = chats
+                                                .filter { it.groupId == groupId && it.deletedAt == null }
+                                                .maxByOrNull { it.lastActivityAt }
+                                            if (groupChat != null) destination = AppDestination.CHAT_DETAIL(groupChat.id)
+                                        }
+                                    )
+                                    is AppDestination.CHAT_SETTINGS -> ChatSettingsPage(
+                                                                                graph = graph,
+                                        chatId = screen.chatId,
+                                        chat = chats.firstOrNull { it.id == screen.chatId },
+                                        characters = allCharacters,
+                                        groups = groups,
+                                        onChatChanged = { updated -> scope.launch { graph.chats.saveChat(updated) } },
+                                        onBack = { destination = AppDestination.CHAT_DETAIL(screen.chatId) }
+                                    )
+                                    is AppDestination.CHARACTER_EDITOR -> CharacterEditorPage(
+                                                                                existing = allCharacters.firstOrNull { it.id == screen.characterId },
+                                        modelProfiles = modelProfiles,
+                                        onBack = { destination = screen.returnTo },
+                                        onPickAvatar = onPickAvatar,
+                                        onOpenMemory = screen.characterId?.let { id ->
+                                            {
+                                                destination = AppDestination.MEMORIES(
+                                                    characterId = id,
+                                                    returnTo = AppDestination.CHARACTER_EDITOR(id, screen.returnTo)
+                                                )
+                                            }
+                                        },
+                                        onArchive = screen.characterId?.let { id ->
+                                            { archived -> scope.launch { useCases.archiveCharacter(id, archived) } }
+                                        },
+                                        onDelete = screen.characterId?.let { id ->
+                                            {
+                                                scope.launch {
+                                                    useCases.deleteCharacter(id)
+                                                    destination = screen.returnTo
+                                                }
+                                            }
+                                        },
+                                        onSave = { character ->
+                                            scope.launch {
+                                                useCases.saveCharacter(character)
+                                                destination = screen.returnTo
+                                            }
+                                        }
+                                    )
+                                    is AppDestination.MEMORIES -> MemoryPage(
+                                                                                character = allCharacters.firstOrNull { it.id == screen.characterId },
+                                        graph = graph,
+                                        onBack = { destination = screen.returnTo }
+                                    )
+                                    is AppDestination.GROUP_EDITOR -> GroupEditorPage(
+                                                                                graph = graph,
+                                        existing = screen.groupId?.let { id -> groups.firstOrNull { it.id == id } },
+                                        characters = characters,
+                                        onPickAvatar = onPickAvatar,
+                                        onBack = { destination = AppDestination.CHAT_LIST },
+                                        onSave = { group ->
+                                            scope.launch {
+                                                if (screen.groupId == null) useCases.createGroupChat(group)
+                                                else useCases.updateGroupChat(group, group.memberCharacterIds.toSet())
+                                                destination = AppDestination.CHAT_LIST
+                                            }
+                                        }
+                                    )
+                                    AppDestination.SETTINGS -> SettingsPage(
+                                        settings = settings,
+                                        onOpenCategory = { category ->
+                                            destination = AppDestination.SETTINGS_CATEGORY(category)
+                                        },
+                                        onOpenCharacterContinuity = { destination = AppDestination.CHARACTER_CONTINUITY_LIST },
+                                        onOpenUserProfile = {
+                                            destination = AppDestination.USER_PROFILE(AppDestination.SETTINGS)
+                                        },
+                                        onOpenModels = { destination = AppDestination.MODELS },
+                                        onOpenDataManagement = { destination = AppDestination.DATA_MANAGEMENT },
+                                        onOpenAbout = { destination = AppDestination.ABOUT(AppDestination.SETTINGS) }
+                                    )
+                                    is AppDestination.SETTINGS_CATEGORY -> SettingsCategoryPage(
+                                                                                category = screen.category,
+                                        settings = settings,
+                                        onSettingsChanged = ::updateSettings,
+                                        onOpenSchedules = { destination = AppDestination.SCHEDULES },
+                                        onBack = { destination = AppDestination.SETTINGS }
+                                    )
+                                    AppDestination.CHARACTER_CONTINUITY_LIST -> CharacterContinuityListPage(
+                                        characters = allCharacters,
+                                        onOpenCharacter = { characterId -> destination = AppDestination.CHARACTER_CONTINUITY(characterId) },
+                                        onBack = { destination = AppDestination.SETTINGS }
+                                    )
+                                    is AppDestination.CHARACTER_CONTINUITY -> {
+                                        val character = allCharacters.firstOrNull { it.id == screen.characterId }
+                                        if (character == null) {
+                                            LaunchedEffect(screen.characterId) {
+                                                destination = AppDestination.CHARACTER_CONTINUITY_LIST
+                                            }
+                                        } else {
+                                            val state by useCases.observeCharacterRuntimeState(screen.characterId).collectAsState(null)
+                                            CharacterContinuityPage(
+                                                character = character,
+                                                state = state?.let {
+                                                    CharacterContinuityUiState(
+                                                        moodValence = it.moodValence,
+                                                        trust = it.trust,
+                                                        closeness = it.closeness
+                                                    )
+                                                },
+                                                onSave = { mood, trust, closeness ->
+                                                    scope.launch { useCases.updateCharacterContinuity(screen.characterId, mood, trust, closeness) }
+                                                },
+                                                onBack = { destination = AppDestination.CHARACTER_CONTINUITY_LIST }
+                                            )
+                                        }
+                                    }
+                                    AppDestination.MODELS -> ModelsPage(
+                                                                                graph = graph,
+                                        profiles = modelProfiles,
+                                        localArtifacts = localArtifacts,
+                                        settings = settings,
+                                        onSettingsChanged = ::updateSettings,
+                                        onPickLocalModel = onPickLocalModel,
+                                        onBack = { destination = AppDestination.SETTINGS }
+                                    )
+                                    is AppDestination.ABOUT -> AboutPage(
+                                                                                appIcon = appIcon,
+                                        onBack = { destination = screen.returnTo }
+                                    )
+                                    AppDestination.SCHEDULES -> SchedulesPage(
+                                                                                graph = graph,
+                                        characters = characters,
+                                        chats = chats,
+                                        onBack = { destination = AppDestination.SETTINGS }
+                                    )
+                                    AppDestination.DATA_MANAGEMENT -> DataManagementPage(
+                                                                                graph = graph,
+                                        onExportData = onExportData,
+                                        onImportDataRequest = onImportDataRequest,
+                                        onBack = { destination = AppDestination.SETTINGS }
                                     )
                                 }
                             }
-                            AppDestination.MODELS -> ModelsPage(
-                                backdrop = backdrop,
-                                graph = graph,
-                                profiles = modelProfiles,
-                                localArtifacts = localArtifacts,
-                                settings = settings,
-                                onSettingsChanged = ::updateSettings,
-                                onPickLocalModel = onPickLocalModel,
-                                onBack = { destination = AppDestination.SETTINGS }
-                            )
-                            AppDestination.ABOUT -> AboutPage(
-                                backdrop = backdrop,
-                                appIcon = appIcon,
-                                onBack = { destination = AppDestination.PROFILE }
-                            )
-                            AppDestination.SCHEDULES -> SchedulesPage(
-                                backdrop = backdrop,
-                                graph = graph,
-                                characters = characters,
-                                chats = chats,
-                                onBack = { destination = AppDestination.SETTINGS }
-                            )
-                            AppDestination.DATA_MANAGEMENT -> DataManagementPage(
-                                backdrop = backdrop,
-                                graph = graph,
-                                onExportData = onExportData,
-                                onImportDataRequest = onImportDataRequest,
-                                onBack = { destination = AppDestination.SETTINGS }
-                            )
                             }
                         }
                     }
@@ -599,7 +717,7 @@ private fun AppContent(
         }
     }
 
-    if (!settings.adultConfirmed) {
+    if (!skipAdultConfirmationForDebug && !settings.adultConfirmed) {
         AlertDialog(
             onDismissRequest = { },
             title = { Text("开始使用 Yumerin") },

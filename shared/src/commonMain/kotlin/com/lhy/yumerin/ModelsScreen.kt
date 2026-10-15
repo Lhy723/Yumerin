@@ -20,14 +20,10 @@ import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.*
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.kyant.backdrop.Backdrop
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.lhy.yumerin.core.model.*
 import com.lhy.yumerin.data.memory.*
 import com.lhy.yumerin.designsystem.*
 import com.lhy.yumerin.domain.*
-import com.lhy.yumerin.domain.agent.*
 import com.lhy.yumerin.domain.memory.*
 import com.lhy.yumerin.domain.repository.*
 import com.lhy.yumerin.domain.usecase.*
@@ -37,7 +33,6 @@ import kotlin.time.Clock
 
 @Composable
 internal fun ModelsPage(
-    backdrop: Backdrop,
     graph: AppGraph,
     profiles: List<ModelProfile>,
     localArtifacts: List<com.lhy.yumerin.core.model.LocalModelArtifact>,
@@ -72,18 +67,29 @@ internal fun ModelsPage(
     var artifactRequirements by remember { mutableStateOf("") }
     var allowMeteredDownload by remember { mutableStateOf(false) }
     var modelActionMessage by remember { mutableStateOf<String?>(null) }
+    var modelTestRunning by remember { mutableStateOf(false) }
+    var modelTestResult by remember { mutableStateOf<ModelConfigurationTestResult?>(null) }
 
     PageColumn {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            GlassBackButton(backdrop = backdrop, onClick = onBack)
+            MiuixBackButton(onClick = onBack)
             Text("模型", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.weight(1f))
-            TextButton(onClick = { editing = !editing }) { Text(if (editing) "取消" else "添加") }
+            if (editing) {
+                TextButton(onClick = { editing = false }, enabled = !modelTestRunning) { Text("取消") }
+            } else {
+                MiuixGlassIconButton(
+                    icon = YumerinAddIcon,
+                    contentDescription = "添加模型",
+                    onClick = { editing = true },
+                    enabled = !modelTestRunning
+                )
+            }
         }
         if (editing) {
-            GlassSurface(backdrop, Modifier.fillMaxWidth()) {
+            MiuixCardSurface(Modifier.fillMaxWidth()) {
                 Column(
                     Modifier
                         .fillMaxWidth()
@@ -93,11 +99,11 @@ internal fun ModelsPage(
                     Text("OpenAI-compatible 模型", style = MaterialTheme.typography.titleLarge)
                     OutlinedTextField(displayName, { displayName = it }, Modifier.fillMaxWidth(), label = { Text("显示名称") }, singleLine = true)
                     OutlinedTextField(providerName, { providerName = it }, Modifier.fillMaxWidth(), label = { Text("提供商") }, singleLine = true)
-                    OutlinedTextField(baseUrl, { baseUrl = it }, Modifier.fillMaxWidth(), label = { Text("Base URL") }, singleLine = true)
-                    OutlinedTextField(modelId, { modelId = it }, Modifier.fillMaxWidth(), label = { Text("Model ID") }, singleLine = true)
+                    OutlinedTextField(baseUrl, { baseUrl = it; modelTestResult = null }, Modifier.fillMaxWidth(), label = { Text("Base URL") }, singleLine = true)
+                    OutlinedTextField(modelId, { modelId = it; modelTestResult = null }, Modifier.fillMaxWidth(), label = { Text("Model ID") }, singleLine = true)
                     OutlinedTextField(
                         apiKey,
-                        { apiKey = it },
+                        { apiKey = it; modelTestResult = null },
                         Modifier.fillMaxWidth(),
                         label = { Text("API Key（必填，仅本地安全存储）") },
                         singleLine = true,
@@ -108,8 +114,50 @@ internal fun ModelsPage(
                     OutlinedTextField(topP, { topP = it }, Modifier.fillMaxWidth(), label = { Text("Top P（可选）") }, singleLine = true)
                     OutlinedTextField(maxOutputTokens, { maxOutputTokens = it }, Modifier.fillMaxWidth(), label = { Text("Max output tokens（可选）") }, singleLine = true)
                     OutlinedTextField(stopSequences, { stopSequences = it }, Modifier.fillMaxWidth(), label = { Text("Stop sequences（逗号分隔，可选）") })
-                    Button(
-                        onClick = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                val testBaseUrl = baseUrl
+                                val testModelId = modelId
+                                val testApiKey = apiKey
+                                scope.launch {
+                                    modelTestRunning = true
+                                    modelTestResult = null
+                                    try {
+                                        modelTestResult = graph.modelConfigurationTester.testRemote(
+                                            baseUrl = testBaseUrl,
+                                            modelId = testModelId,
+                                            apiKey = testApiKey
+                                        )
+                                    } catch (cancelled: CancellationException) {
+                                        throw cancelled
+                                    } catch (_: Throwable) {
+                                        modelTestResult = ModelConfigurationTestResult(
+                                            connectionSucceeded = false,
+                                            toolCallsSupported = null,
+                                            message = "测试未完成，请检查配置、网络和服务状态。"
+                                        )
+                                    } finally {
+                                        modelTestRunning = false
+                                    }
+                                }
+                            },
+                            enabled = !modelTestRunning && baseUrl.isNotBlank() && modelId.isNotBlank() && apiKey.isNotBlank(),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            if (modelTestRunning) {
+                                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                                Spacer(Modifier.width(8.dp))
+                                Text("测试中")
+                            } else {
+                                Text("测试模型")
+                            }
+                        }
+                        Button(
+                            onClick = {
                             val alias = newEntityId("credential")
                             val now = nowMillis()
                             scope.launch {
@@ -153,14 +201,27 @@ internal fun ModelsPage(
                                 stopSequences = ""
                                 editing = false
                             }
-                        },
-                        enabled = modelId.isNotBlank() && apiKey.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text("保存模型") }
+                            },
+                            enabled = !modelTestRunning && modelId.isNotBlank() && apiKey.isNotBlank(),
+                            modifier = Modifier.weight(1f)
+                        ) { Text("保存模型") }
+                    }
+                    Text(
+                        "测试会发送两条短请求（可能产生少量费用），不读取聊天或记忆，也不会保存本次配置。",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    modelTestResult?.let { result ->
+                        val resultColor = when {
+                            result.connectionSucceeded && result.toolCallsSupported == true -> MaterialTheme.colorScheme.primary
+                            result.connectionSucceeded -> MaterialTheme.colorScheme.tertiary
+                            else -> MaterialTheme.colorScheme.error
+                        }
+                        Text(result.message, color = resultColor)
+                    }
                 }
             }
         }
-        GlassSurface(backdrop, Modifier.fillMaxWidth()) {
+        MiuixCardSurface(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("模型配置", style = MaterialTheme.typography.titleLarge)
                 Text("支持用户自带 API Key 的 OpenAI-compatible 模型；密钥只会保存在 Android 安全存储。")
@@ -178,7 +239,7 @@ internal fun ModelsPage(
                 }
             }
         }
-        GlassSurface(backdrop, Modifier.fillMaxWidth()) {
+        MiuixCardSurface(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("本地模型", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
