@@ -71,6 +71,7 @@ Debug APK：`androidApp/build/outputs/apk/debug/androidApp-debug.apk`。Web 也�
 - Android Debug APK 最近一次 `:androidApp:assembleDebug` 构建成功。
 - 2026-10-15 本机 `:androidApp:assembleDebug`、`:shared:compileKotlinJs` 和 `:shared:compileKotlinWasmJs` 均构建成功；JS/Wasm 编译提示 Compose Multiplatform 插件声明为 1.11.1、依赖解析到 1.12.0。发布前需评估并对齐 Miuix 0.9.4 所用的 Compose 工具链。
 - Android 17 / API 37 目前通过 Canary SDK channel 提供；GitHub Actions 使用 Android CLI 的 `--canary` 安装平台和 Build Tools。
+- GitHub Dependabot vulnerability alerts 已启用；Gradle 与 GitHub Actions 的版本更新按周检查。GitHub 的 npm 安全更新因 `kotlin-js-store` 只提交 Gradle 管理的 `yarn.lock`、没有 `package.json` 而无法运行，目前保持关闭；告警仍需人工通过 Gradle/Kotlin 工具链更新处理。
 - 主要 UI 正在使用 Compose、Material 3、Miuix 和 Backdrop 组件；聊天列表/详情、液态导航、角色列表/编辑、个人资料和设置页已有 HyperOS/Liquid Glass 方向的整理。
 - 当前任务未运行自动化测试；需要发布前运行上面的 host tests，并对 Android 设备权限、后台限制和数据迁移做设备验证。
 - Web/Wasm 仍是内存预览，不是持久化 Web 产品。
