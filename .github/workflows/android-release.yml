@@ -49,6 +49,11 @@ jobs:
             echo "::error::Tag version '$tag_version' must match app versionName '$app_version'."
             exit 1
           fi
+          notes_file="docs/releases/v${app_version}.md"
+          if [[ ! -f "$notes_file" ]]; then
+            echo "::error::Release notes file '$notes_file' is missing."
+            exit 1
+          fi
           if [[ ! -f LICENSE ]]; then
             echo "::error::Add the project owner's chosen LICENSE before publishing a public release."
             exit 1
@@ -60,6 +65,7 @@ jobs:
             fi
           done
           echo "version=$app_version" >> "$GITHUB_OUTPUT"
+          echo "notes_file=$notes_file" >> "$GITHUB_OUTPUT"
 
       - name: Restore existing release key
         env:
@@ -93,4 +99,4 @@ jobs:
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" "${{ steps.verify_apk.outputs.asset }}" --verify-tag --title "Yumerin ${{ steps.release_meta.outputs.version }}" --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" "${{ steps.verify_apk.outputs.asset }}" --verify-tag --title "Yumerin ${{ steps.release_meta.outputs.version }}" --notes-file "${{ steps.release_meta.outputs.notes_file }}"

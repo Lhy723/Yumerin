@@ -6,6 +6,7 @@ Android 应用版本定义在 `androidApp/build.gradle.kts`。每次发布都要
 
 - `.github/workflows/android-ci.yml` 在面向 `main` 的 Pull Request、推送到 `main` 和手动运行时，构建 Android Debug、JS 和 Wasm 目标。
 - `.github/workflows/android-release.yml` 响应 `v*` 标签，检查标签版本与 `versionName` 一致，构建 arm64 Release APK、验证签名，并创建 GitHub Release。
+- 每个版本的公告保存在 `docs/releases/v<version>.md`。使用 `What's Changed` 逐项说明具体改动并链接 issue/PR；有新贡献者时加入 `New Contributors`；最后提供面向用户的 `更新说明`。发布工作流直接使用该文件。
 - 仓库必须包含 `LICENSE`，并配置下方 Actions secrets；任一项缺失时，发布工作流都会失败。
 
 ## 配置签名
@@ -31,7 +32,7 @@ Android 应用版本定义在 `androidApp/build.gradle.kts`。每次发布都要
 
 ## 发布步骤
 
-1. 更新版本号和 `CHANGELOG.md`，并确认 Actions 的 Android CI 构建成功。
+1. 更新版本号、`CHANGELOG.md` 和 `docs/releases/v<version>.md`，并确认 Actions 的 Android CI 构建成功。
 2. 用与 `versionName` 完全相同的版本创建标签，例如 `v1.1.0`。
 3. 将标签推送到 `origin`。Release 工作流会创建 GitHub Release 并附上签名的 arm64 APK。
 
