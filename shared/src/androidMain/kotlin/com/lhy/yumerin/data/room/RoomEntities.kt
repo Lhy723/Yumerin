@@ -169,7 +169,9 @@ data class AppSettingsEntity(
     val userName: String = "Yumerin User",
     val userAvatarUri: String? = null,
     @ColumnInfo(defaultValue = "'BLUE'")
-    val themeColor: String = "BLUE"
+    val themeColor: String = "BLUE",
+    @ColumnInfo(defaultValue = "'STANDARD'")
+    val componentMaterial: String = "STANDARD"
 ) {
     companion object {
         const val GLOBAL_ID = "global"

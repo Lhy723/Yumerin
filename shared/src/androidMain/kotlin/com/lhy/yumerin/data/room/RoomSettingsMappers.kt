@@ -19,7 +19,8 @@ fun AppSettingsEntity.toDomain() = AppSettings(
     reducedMotionEnabled = reducedMotionEnabled,
     userName = userName,
     userAvatarUri = userAvatarUri,
-    themeColor = enumValueOrDefault(themeColor, ThemeColor.BLUE)
+    themeColor = enumValueOrDefault(themeColor, ThemeColor.BLUE),
+    componentMaterial = enumValueOrDefault(componentMaterial, ComponentMaterial.STANDARD)
 )
 
 fun AppSettings.toEntity() = AppSettingsEntity(
@@ -39,5 +40,6 @@ fun AppSettings.toEntity() = AppSettingsEntity(
     reducedMotionEnabled = reducedMotionEnabled,
     userName = userName,
     userAvatarUri = userAvatarUri,
-    themeColor = themeColor.name
+    themeColor = themeColor.name,
+    componentMaterial = componentMaterial.name
 )

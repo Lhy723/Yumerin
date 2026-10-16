@@ -1,5 +1,7 @@
 package com.lhy.yumerin
 
+import com.lhy.yumerin.designsystem.YumerinSpacing
+
 import androidx.compose.animation.*
 import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection
 import androidx.compose.foundation.*
@@ -32,6 +34,12 @@ import androidx.compose.ui.unit.dp
 import com.lhy.yumerin.core.model.*
 import com.lhy.yumerin.data.memory.*
 import com.lhy.yumerin.designsystem.*
+import com.lhy.yumerin.designsystem.YumerinAlertDialog as AlertDialog
+import com.lhy.yumerin.designsystem.YumerinButton as Button
+import com.lhy.yumerin.designsystem.YumerinOutlinedTextField as OutlinedTextField
+import com.lhy.yumerin.designsystem.YumerinTextButton as TextButton
+import top.yukonga.miuix.kmp.basic.HorizontalDivider as HorizontalDivider
+import top.yukonga.miuix.kmp.menu.WindowIconDropdownMenu
 import com.lhy.yumerin.domain.*
 import com.lhy.yumerin.domain.memory.*
 import com.lhy.yumerin.domain.repository.*
@@ -48,8 +56,6 @@ import top.yukonga.miuix.kmp.basic.Checkbox as MiuixCheckbox
 import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
 import top.yukonga.miuix.kmp.overlay.OverlayDialog as MiuixOverlayDialog
 import top.yukonga.miuix.kmp.preference.SwitchPreference as MiuixSwitchPreference
-import top.yukonga.miuix.kmp.basic.Button as MiuixButton
-import top.yukonga.miuix.kmp.basic.ButtonDefaults as MiuixButtonDefaults
 import top.yukonga.miuix.kmp.basic.FloatingActionButton as MiuixFloatingActionButton
 
 private enum class ChatListFilter(val label: String) {
@@ -89,8 +95,8 @@ internal fun ChatListPage(
     Box(Modifier.fillMaxSize()) {
         PageColumn {
             Column(
-                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                modifier = Modifier.padding(top = YumerinSpacing.PageVertical, bottom = YumerinSpacing.Compact),
+                verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Tight)
             ) {
                 Text(
                     "聊天",
@@ -113,7 +119,7 @@ internal fun ChatListPage(
             )
             if (filteredChats.isEmpty()) {
                 MiuixCardSurface(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.padding(YumerinSpacing.LargeInset), verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Item)) {
                         Text(
                             if (orderedChats.isEmpty()) "还没有聊天" else "这里还没有${selectedFilter.label}",
                             style = MaterialTheme.typography.titleMedium
@@ -132,7 +138,7 @@ internal fun ChatListPage(
                         filteredChats.forEachIndexed { index, chat ->
                             if (index > 0) {
                                 HorizontalDivider(
-                                    modifier = Modifier.padding(start = 80.dp, end = 16.dp),
+                                    modifier = Modifier.padding(start = YumerinChatListTokens.DividerLeadingInset, end = YumerinSpacing.PageHorizontal),
                                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)
                                 )
                             }
@@ -156,20 +162,20 @@ internal fun ChatListPage(
                     }
                 }
             }
-            Spacer(Modifier.height(96.dp))
+            Spacer(Modifier.height(YumerinChatListTokens.ContentBottomClearance))
         }
 
         MiuixFloatingActionButton(
             onClick = onCreateGroup,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 18.dp, bottom = 106.dp)
+                .padding(end = YumerinSpacing.CardInset, bottom = YumerinChatListTokens.FloatingActionBottomInset)
         ) {
             Icon(
                 YumerinAddIcon,
                 contentDescription = "创建群聊",
                 tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier.size(YumerinSize.LargeIcon)
             )
         }
     }
@@ -218,28 +224,28 @@ private fun ChatListFilterBar(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp)
+            .height(YumerinSize.ToolbarControl)
             .graphicsLayer {
-                val scale = 1f + 8.dp.toPx() / size.width * selectorAnimation.pressProgress
+                val scale = 1f + YumerinChatListTokens.SelectorPressDistance.toPx() / size.width * selectorAnimation.pressProgress
                 scaleX = scale
                 scaleY = scale
             }
             .clip(CircleShape)
             .background(MaterialTheme.colorScheme.surface)
             .border(
-                width = 0.8.dp,
+                width = YumerinChatListTokens.SelectorEdgeWidth,
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
                 shape = CircleShape
             )
     ) {
-        val horizontalInsetPx = with(density) { 4.dp.toPx() }
+        val horizontalInsetPx = with(density) { YumerinSpacing.Compact.toPx() }
         val tabWidthPx = ((constraints.maxWidth - horizontalInsetPx * 2f) / filters.size)
             .coerceAtLeast(1f)
         val tabWidth = with(density) { tabWidthPx.toDp() }
 
         Box(
             modifier = Modifier
-                .padding(horizontal = 4.dp)
+                .padding(horizontal = YumerinSpacing.Compact)
                 .graphicsLayer {
                     translationX = selectorAnimation.value * tabWidthPx
                     scaleX = selectorAnimation.scaleX
@@ -247,13 +253,13 @@ private fun ChatListFilterBar(
                 }
                 .width(tabWidth)
                 .fillMaxHeight()
-                .padding(vertical = 4.dp)
+                .padding(vertical = YumerinSpacing.Compact)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.primaryContainer)
         )
 
         Row(
-            modifier = Modifier.fillMaxSize().padding(4.dp),
+            modifier = Modifier.fillMaxSize().padding(YumerinSpacing.Compact),
             verticalAlignment = Alignment.CenterVertically
         ) {
             filters.forEach { filter ->
@@ -272,7 +278,7 @@ private fun ChatListFilterBar(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Inline)
                     ) {
                         Text(
                             filter.label,
@@ -380,23 +386,22 @@ private fun ChatListRow(
     onDelete: () -> Unit,
     onEditGroup: (() -> Unit)?
 ) {
-    var menuExpanded by remember(chat.id) { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 76.dp)
+            .heightIn(min = YumerinSize.ChatListRow)
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = YumerinSpacing.PageHorizontal, vertical = YumerinSpacing.FormField),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Field)
     ) {
         if (chat.kind == ChatKind.GROUP && avatarUri == null) {
             CompositeAvatar(avatarMembers, avatarText)
         } else {
             Avatar(avatarText, avatarUri)
         }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(YumerinSpacing.CompactRow)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Inline)) {
                 Text(
                     text = chat.title,
                     style = MaterialTheme.typography.titleMedium,
@@ -408,7 +413,7 @@ private fun ChatListRow(
                         YumerinPinIcon,
                         contentDescription = "已置顶",
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(15.dp)
+                        modifier = Modifier.size(YumerinSize.StatusIcon)
                     )
                 }
                 if (chat.muted) {
@@ -416,7 +421,7 @@ private fun ChatListRow(
                         YumerinMutedIcon,
                         contentDescription = "已免打扰",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(15.dp)
+                        modifier = Modifier.size(YumerinSize.StatusIcon)
                     )
                 }
             }
@@ -430,7 +435,7 @@ private fun ChatListRow(
         }
         Column(
             horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Dense)
         ) {
             formatChatActivityTime(chat.lastActivityAt).takeIf { it.isNotEmpty() }?.let { activityTime ->
                 Text(
@@ -449,41 +454,23 @@ private fun ChatListRow(
                 }
             }
         }
-        Box {
-            IconButton(onClick = { menuExpanded = true }) {
-                Icon(
-                    imageVector = YumerinMoreIcon,
-                    contentDescription = "聊天选项",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            DropdownMenu(
-                expanded = menuExpanded,
-                onDismissRequest = { menuExpanded = false }
-            ) {
-                DropdownMenuItem(
-                    text = { Text(if (chat.pinned) "取消置顶" else "置顶") },
-                    onClick = { menuExpanded = false; onTogglePinned() }
-                )
-                DropdownMenuItem(
-                    text = { Text(if (chat.muted) "取消免打扰" else "免打扰") },
-                    onClick = { menuExpanded = false; onToggleMuted() }
-                )
-                DropdownMenuItem(
-                    text = { Text("标记未读") },
-                    onClick = { menuExpanded = false; onMarkUnread() }
-                )
-                onEditGroup?.let {
-                    DropdownMenuItem(
-                        text = { Text("管理群成员") },
-                        onClick = { menuExpanded = false; it() }
-                    )
+        WindowIconDropdownMenu(
+            entry = DropdownEntry(
+                items = buildList {
+                    add(DropdownItem(text = if (chat.pinned) "取消置顶" else "置顶", onClick = onTogglePinned))
+                    add(DropdownItem(text = if (chat.muted) "取消免打扰" else "免打扰", onClick = onToggleMuted))
+                    add(DropdownItem(text = "标记未读", onClick = onMarkUnread))
+                    onEditGroup?.let { edit -> add(DropdownItem(text = "管理群成员", onClick = edit)) }
+                    add(DropdownItem(text = "删除聊天", onClick = onDelete))
                 }
-                DropdownMenuItem(
-                    text = { Text("删除聊天") },
-                    onClick = { menuExpanded = false; onDelete() }
-                )
-            }
+            ),
+            modifier = Modifier.size(YumerinSize.MenuAction)
+        ) {
+            Icon(
+                imageVector = YumerinMoreIcon,
+                contentDescription = "聊天选项",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -528,7 +515,7 @@ internal fun GroupEditorPage(
     PageColumn {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Field)
         ) {
             MiuixBackButton(onClick = onBack)
             Text(if (existing == null) "创建群聊" else "管理群聊", style = MaterialTheme.typography.headlineLarge)
@@ -537,32 +524,32 @@ internal fun GroupEditorPage(
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(YumerinSpacing.CardInset),
+                verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Field)
             ) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("群名称") },
+                    label = "群名称",
                     singleLine = true
                 )
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Field)) {
                     Avatar(name.ifBlank { "群" }, avatarUri)
                     Column(Modifier.weight(1f)) {
                         Text(if (avatarUri == null) "默认使用成员头像合成" else "已设置自定义群头像")
                         TextButton(onClick = { onPickAvatar { it?.let { selected -> avatarUri = selected } } }) { Text("选择自定义头像") }
                     }
                 }
-                OutlinedTextField(scenario, { scenario = it }, Modifier.fillMaxWidth(), label = { Text("群聊场景") })
-                OutlinedTextField(storySetting, { storySetting = it }, Modifier.fillMaxWidth(), label = { Text("故事设定") })
-                OutlinedTextField(interactionStyle, { interactionStyle = it }, Modifier.fillMaxWidth(), label = { Text("互动风格") })
-                OutlinedTextField(turnLimit, { turnLimit = it }, Modifier.fillMaxWidth(), label = { Text("自动对话回合（1-3）") }, singleLine = true)
+                OutlinedTextField(scenario, { scenario = it }, Modifier.fillMaxWidth(), label = "群聊场景")
+                OutlinedTextField(storySetting, { storySetting = it }, Modifier.fillMaxWidth(), label = "故事设定")
+                OutlinedTextField(interactionStyle, { interactionStyle = it }, Modifier.fillMaxWidth(), label = "互动风格")
+                OutlinedTextField(turnLimit, { turnLimit = it }, Modifier.fillMaxWidth(), label = "自动对话回合（1-3）", singleLine = true)
                 OutlinedTextField(
                     value = summary,
                     onValueChange = { summary = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("群聊上下文摘要") }
+                    label = "群聊上下文摘要"
                 )
                 TextButton(
                     onClick = { summary = summarizeMessages(groupMessages) },
@@ -661,23 +648,23 @@ internal fun ChatSettingsPage(
     PageColumn {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Field)
         ) {
             MiuixBackButton(onClick = onBack)
             Text("聊天设置", style = MaterialTheme.typography.headlineLarge)
         }
         if (chat == null) {
             MiuixCardSurface(Modifier.fillMaxWidth()) {
-                Text("找不到这个聊天", modifier = Modifier.padding(18.dp))
+                Text("找不到这个聊天", modifier = Modifier.padding(YumerinSpacing.CardInset))
             }
         } else {
             MiuixCardSurface(Modifier.fillMaxWidth()) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(18.dp),
+                        .padding(YumerinSpacing.CardInset),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Row)
                 ) {
                     if (group != null && chat.avatarUri == null) {
                         CompositeAvatar(groupMembers, group.name)
@@ -687,7 +674,7 @@ internal fun ChatSettingsPage(
                             chat.avatarUri ?: character?.avatarUri
                         )
                     }
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Compact)) {
                         Text(chat.title, style = MaterialTheme.typography.titleMedium)
                         Text(if (group == null) "私聊" else "群聊 · ${groupMembers.size} 位角色")
                     }
@@ -733,12 +720,12 @@ internal fun ChatSettingsPage(
             summary = "摘要只属于当前聊天线程，不会写入角色长期记忆。",
             onDismissRequest = { showSummary = false }
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(YumerinSpacing.FormField)) {
                 OutlinedTextField(
                     value = summaryDraft,
                     onValueChange = { summaryDraft = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("摘要内容") }
+                    label = "摘要内容"
                 )
                 OverlayDropdownMenu(
                     entry = DropdownEntry(

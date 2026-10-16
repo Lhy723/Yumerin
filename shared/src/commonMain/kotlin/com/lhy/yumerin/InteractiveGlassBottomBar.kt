@@ -47,8 +47,6 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
@@ -62,7 +60,11 @@ import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
 import com.kyant.shapes.Capsule
-import com.lhy.yumerin.designsystem.EdgeLight
+import com.lhy.yumerin.designsystem.YumerinGlassTokens
+import com.lhy.yumerin.designsystem.YumerinNavigationTokens
+import com.lhy.yumerin.designsystem.YumerinSpacing
+import com.lhy.yumerin.designsystem.YumerinSize
+import com.lhy.yumerin.designsystem.YumerinTypography
 import com.lhy.yumerin.designsystem.edgeLight
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -83,11 +85,7 @@ internal fun MiuixFloatingBottomBar(
     val latestSelectedIndex = rememberUpdatedState(selectedIndex)
     val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
     val contentTint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-    val trackColor = if (isLightTheme) {
-        Color(0xFFFAFAFA).copy(alpha = 0.6f)
-    } else {
-        Color(0xFF242424).copy(alpha = 0.6f)
-    }
+    val trackColor = YumerinGlassTokens.navigationSurface(isLightTheme)
     val animationScope = rememberCoroutineScope()
     val selectorAnimation = remember(animationScope, pages.size, reducedMotion) {
         DampedDragAnimation(
@@ -96,7 +94,7 @@ internal fun MiuixFloatingBottomBar(
             valueRange = 0f..pages.lastIndex.toFloat(),
             visibilityThreshold = 0.001f,
             initialScale = 1f,
-            pressedScale = 78f / 56f,
+            pressedScale = YumerinNavigationTokens.PressedScale,
             reducedMotion = reducedMotion,
             onDragStarted = {},
             onDragStopped = {},
@@ -118,14 +116,17 @@ internal fun MiuixFloatingBottomBar(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp),
+            .padding(
+                horizontal = YumerinNavigationTokens.OuterHorizontalInset,
+                vertical = YumerinNavigationTokens.OuterVerticalInset
+            ),
         contentAlignment = Alignment.Center
     ) {
-        val barWidth = minOf(maxWidth * 0.89f, 420.dp)
+        val barWidth = minOf(maxWidth * YumerinNavigationTokens.WidthFraction, YumerinNavigationTokens.MaxWidth)
         BoxWithConstraints(
             modifier = Modifier
                 .width(barWidth)
-                .height(56.dp),
+                .height(YumerinNavigationTokens.BarHeight),
             contentAlignment = Alignment.CenterStart
         ) {
             val offsetAnimation = remember { Animatable(0f) }
@@ -134,7 +135,7 @@ internal fun MiuixFloatingBottomBar(
                     val fraction = (offsetAnimation.value / constraints.maxWidth.coerceAtLeast(1))
                         .coerceIn(-1f, 1f)
                     with(density) {
-                        4.dp.toPx() * fraction.sign * EaseOut.transform(abs(fraction))
+                        YumerinNavigationTokens.PanelOffset.toPx() * fraction.sign * EaseOut.transform(abs(fraction))
                     }
                 }
             }
@@ -145,7 +146,7 @@ internal fun MiuixFloatingBottomBar(
                 InteractiveHighlight(
                     animationScope = animationScope,
                     position = { size, finger ->
-                        val scale = 1f + with(density) { 16.dp.toPx() } / size.width
+                        val scale = 1f + with(density) { YumerinNavigationTokens.PressScaleDistance.toPx() } / size.width
                         Offset(
                             (finger.x - latestPanelOffset.value - size.width / 2f) / scale + size.width / 2f,
                             (finger.y - size.height / 2f) / scale + size.height / 2f
@@ -153,24 +154,18 @@ internal fun MiuixFloatingBottomBar(
                     }
                 )
             }
-            val horizontalInsetPx = with(density) { 4.dp.toPx() }
+            val horizontalInsetPx = with(density) { YumerinNavigationTokens.TrackInset.toPx() }
             val tabWidthPx = ((constraints.maxWidth - horizontalInsetPx * 2f) / pages.size)
                 .coerceAtLeast(1f)
             val tabWidth = with(density) { tabWidthPx.toDp() }
-            val edgeLight = remember(isLightTheme) {
-                EdgeLight(
-                    color = Color.White.copy(alpha = if (isLightTheme) 0.6f else 0.2f),
-                    width = if (isLightTheme) 0.24.dp else 0.34.dp,
-                    blurRadius = 0.4.dp
-                )
-            }
+            val edgeLight = YumerinGlassTokens.edgeLight(isLightTheme)
 
             Box(
                 Modifier
                     .fillMaxSize()
                     .graphicsLayer {
                         translationX = panelOffset
-                        val scale = lerp(1f, 1f + 16.dp.toPx() / size.width, pressProgress)
+                        val scale = lerp(1f, 1f + YumerinNavigationTokens.PressScaleDistance.toPx() / size.width, pressProgress)
                         scaleX = scale
                         scaleY = scale
                     }
@@ -179,8 +174,8 @@ internal fun MiuixFloatingBottomBar(
                         shape = { Capsule() },
                         effects = {
                             vibrancy()
-                            blur(8.dp.toPx())
-                            lens(24.dp.toPx(), 24.dp.toPx())
+                            blur(YumerinGlassTokens.BlurRadius.toPx())
+                            lens(YumerinGlassTokens.LensRadius.toPx(), YumerinGlassTokens.LensRadius.toPx())
                         },
                         onDrawSurface = { drawRect(trackColor) }
                     )
@@ -194,7 +189,7 @@ internal fun MiuixFloatingBottomBar(
                     .layerBackdrop(glowBackdrop)
                     .graphicsLayer {
                         translationX = panelOffset
-                        val scale = lerp(1f, 1f + 16.dp.toPx() / size.width, pressProgress)
+                        val scale = lerp(1f, 1f + YumerinNavigationTokens.PressScaleDistance.toPx() / size.width, pressProgress)
                         scaleX = scale
                         scaleY = scale
                     }
@@ -203,7 +198,7 @@ internal fun MiuixFloatingBottomBar(
 
             Box(
                 Modifier
-                    .padding(horizontal = 4.dp)
+                    .padding(horizontal = YumerinNavigationTokens.TrackInset)
                     .graphicsLayer {
                         translationX = if (isLtr) {
                             selectorAnimation.value * tabWidthPx + panelOffset
@@ -217,14 +212,14 @@ internal fun MiuixFloatingBottomBar(
                         scaleY *= 1f - (velocity * 0.25f).coerceIn(-0.2f, 0.2f)
                     }
                     .width(tabWidth)
-                    .height(48.dp)
+                    .height(YumerinNavigationTokens.SelectedHeight)
                     .drawBackdrop(
                         backdrop = combinedBackdrop,
                         shape = { Capsule() },
                         effects = {
                             lens(
-                                10.dp.toPx() * pressProgress,
-                                14.dp.toPx() * pressProgress,
+                                YumerinNavigationTokens.LensRadiusResting.toPx() * pressProgress,
+                                YumerinNavigationTokens.LensRadiusPressed.toPx() * pressProgress,
                                 chromaticAberration = true
                             )
                         },
@@ -234,17 +229,17 @@ internal fun MiuixFloatingBottomBar(
                         shadow = { Shadow(alpha = pressProgress) },
                         innerShadow = {
                             InnerShadow(
-                                radius = 8.dp * pressProgress,
+                                radius = YumerinNavigationTokens.PressShadowRadius * pressProgress,
                                 alpha = pressProgress
                             )
                         },
                         onDrawSurface = {
                             drawRect(
-                                if (isLightTheme) Color.Black.copy(alpha = 0.06f)
-                                else Color.White.copy(alpha = 0.1f),
+                                if (isLightTheme) YumerinNavigationTokens.SelectedFillLight
+                                else YumerinNavigationTokens.SelectedFillDark,
                                 alpha = 1f - pressProgress
                             )
-                            drawRect(Color.Black.copy(alpha = 0.035f * pressProgress))
+                            drawRect(YumerinNavigationTokens.PressFill.copy(alpha = YumerinNavigationTokens.PressFill.alpha * pressProgress))
                         }
                     )
             )
@@ -256,7 +251,7 @@ internal fun MiuixFloatingBottomBar(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer { translationX = panelOffset }
-                    .padding(4.dp)
+                    .padding(YumerinNavigationTokens.TrackInset)
             )
 
             Box(
@@ -361,19 +356,19 @@ private fun NavigationTabsContent(
                     }
                     .weight(1f)
                     .fillMaxHeight(),
-                verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+                verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Tight, Alignment.CenterVertically),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Icon(
                     imageVector = page.navigationIcon,
                     contentDescription = null,
                     tint = tint,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(YumerinSize.NavigationIcon)
                 )
                 Text(
                     text = page.label,
                     color = tint,
-                    fontSize = 11.sp,
+                    fontSize = YumerinTypography.NavigationLabel,
                     fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
                     maxLines = 1
                 )

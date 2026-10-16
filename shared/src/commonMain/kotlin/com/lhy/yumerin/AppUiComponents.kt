@@ -50,8 +50,8 @@ internal fun PageColumn(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(horizontal = YumerinSpacing.PageHorizontal, vertical = YumerinSpacing.PageVertical),
+        verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Field),
         content = content
     )
 }
@@ -77,29 +77,21 @@ internal fun MiuixGlassIconButton(
 ) {
     val backdrop = LocalGlassButtonBackdrop.current
     val isLightTheme = MaterialTheme.colorScheme.surface.luminance() > 0.5f
-    val containerColor = if (isLightTheme) {
-        Color(0xFFFAFAFA).copy(alpha = 0.76f)
-    } else {
-        Color(0xFF242424).copy(alpha = 0.84f)
-    }
-    val edgeLight = EdgeLight(
-        color = Color.White.copy(alpha = if (isLightTheme) 0.6f else 0.2f),
-        width = if (isLightTheme) 0.24.dp else 0.34.dp,
-        blurRadius = 0.4.dp
-    )
+    val containerColor = YumerinGlassTokens.controlSurface(isLightTheme)
+    val edgeLight = YumerinGlassTokens.edgeLight(isLightTheme)
     Box(
         modifier = Modifier
-            .size(52.dp),
+            .size(YumerinSize.ToolbarControl),
         contentAlignment = Alignment.Center
     ) {
         val glassModifier = Modifier
-            .size(48.dp)
+            .size(YumerinSize.TouchTarget)
             .shadow(
-                elevation = 4.dp,
+                elevation = YumerinGlassTokens.ShadowElevation,
                 shape = CircleShape,
                 clip = false,
-                ambientColor = Color.Black.copy(alpha = 0.08f),
-                spotColor = Color.Black.copy(alpha = 0.08f)
+                ambientColor = Color.Black.copy(alpha = YumerinGlassTokens.ShadowAlpha),
+                spotColor = Color.Black.copy(alpha = YumerinGlassTokens.ShadowAlpha)
             )
             .then(
                 if (backdrop != null) {
@@ -108,8 +100,8 @@ internal fun MiuixGlassIconButton(
                         shape = { CircleShape },
                         effects = {
                             vibrancy()
-                            blur(8.dp.toPx())
-                            lens(8.dp.toPx(), 24.dp.toPx())
+                            blur(YumerinGlassTokens.BlurRadius.toPx())
+                            lens(YumerinGlassTokens.BlurRadius.toPx(), YumerinGlassTokens.LensRadius.toPx())
                         },
                         highlight = null,
                         shadow = null,
@@ -131,7 +123,7 @@ internal fun MiuixGlassIconButton(
                 imageVector = icon,
                 contentDescription = contentDescription,
                 tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(YumerinSize.Icon)
             )
         }
     }
@@ -145,25 +137,17 @@ internal fun MiuixGlassSurface(
     content: @Composable BoxScope.() -> Unit
 ) {
     val isLightTheme = MaterialTheme.colorScheme.surface.luminance() > 0.5f
-    val containerColor = if (isLightTheme) {
-        Color(0xFFFAFAFA).copy(alpha = 0.76f)
-    } else {
-        Color(0xFF242424).copy(alpha = 0.84f)
-    }
-    val edgeLight = EdgeLight(
-        color = Color.White.copy(alpha = if (isLightTheme) 0.6f else 0.2f),
-        width = if (isLightTheme) 0.24.dp else 0.34.dp,
-        blurRadius = 0.4.dp
-    )
+    val containerColor = YumerinGlassTokens.controlSurface(isLightTheme)
+    val edgeLight = YumerinGlassTokens.edgeLight(isLightTheme)
 
     Box(
         modifier = modifier
             .shadow(
-                elevation = 4.dp,
+                elevation = YumerinGlassTokens.ShadowElevation,
                 shape = shape,
                 clip = false,
-                ambientColor = Color.Black.copy(alpha = 0.08f),
-                spotColor = Color.Black.copy(alpha = 0.08f)
+                ambientColor = Color.Black.copy(alpha = YumerinGlassTokens.ShadowAlpha),
+                spotColor = Color.Black.copy(alpha = YumerinGlassTokens.ShadowAlpha)
             )
             .then(
                 if (backdrop != null) {
@@ -172,8 +156,8 @@ internal fun MiuixGlassSurface(
                         shape = { shape },
                         effects = {
                             vibrancy()
-                            blur(8.dp.toPx())
-                            lens(8.dp.toPx(), 24.dp.toPx())
+                            blur(YumerinGlassTokens.BlurRadius.toPx())
+                            lens(YumerinGlassTokens.BlurRadius.toPx(), YumerinGlassTokens.LensRadius.toPx())
                         },
                         highlight = null,
                         shadow = null,
@@ -207,12 +191,12 @@ internal fun MiuixActionIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    MiuixIconButton(onClick = onClick, modifier = modifier.size(48.dp)) {
+    MiuixIconButton(onClick = onClick, modifier = modifier.size(YumerinSize.TouchTarget)) {
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
             tint = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.size(22.dp)
+            modifier = Modifier.size(YumerinSize.Icon)
         )
     }
 }
@@ -225,7 +209,7 @@ internal fun MiuixSendButton(
 ) {
     MiuixIconButton(
         onClick = onClick,
-        modifier = Modifier.size(52.dp),
+        modifier = Modifier.size(YumerinSize.ToolbarControl),
         enabled = enabled
     ) {
         Icon(
@@ -233,15 +217,15 @@ internal fun MiuixSendButton(
             contentDescription = if (sending) "停止生成" else "发送",
             tint = if (enabled) MaterialTheme.colorScheme.primary
             else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
-            modifier = Modifier.size(21.dp)
+            modifier = Modifier.size(YumerinSize.SendIcon)
         )
     }
 }
 
 private val YumerinBackArrow: ImageVector = ImageVector.Builder(
     name = "YumerinBackArrow",
-    defaultWidth = 24.dp,
-    defaultHeight = 24.dp,
+    defaultWidth = YumerinSize.IconViewport,
+    defaultHeight = YumerinSize.IconViewport,
     viewportWidth = 24f,
     viewportHeight = 24f
 ).apply {
@@ -261,8 +245,8 @@ private val YumerinBackArrow: ImageVector = ImageVector.Builder(
 
 internal val YumerinMoreIcon: ImageVector = ImageVector.Builder(
     name = "YumerinMoreIcon",
-    defaultWidth = 24.dp,
-    defaultHeight = 24.dp,
+    defaultWidth = YumerinSize.IconViewport,
+    defaultHeight = YumerinSize.IconViewport,
     viewportWidth = 24f,
     viewportHeight = 24f
 ).apply {
@@ -290,8 +274,8 @@ internal val YumerinMoreIcon: ImageVector = ImageVector.Builder(
 
 internal val YumerinChevronRight: ImageVector = ImageVector.Builder(
     name = "YumerinChevronRight",
-    defaultWidth = 24.dp,
-    defaultHeight = 24.dp,
+    defaultWidth = YumerinSize.IconViewport,
+    defaultHeight = YumerinSize.IconViewport,
     viewportWidth = 24f,
     viewportHeight = 24f
 ).apply {
@@ -308,8 +292,8 @@ internal val YumerinChevronRight: ImageVector = ImageVector.Builder(
 
 internal val YumerinPinIcon: ImageVector = ImageVector.Builder(
     name = "YumerinPinIcon",
-    defaultWidth = 24.dp,
-    defaultHeight = 24.dp,
+    defaultWidth = YumerinSize.IconViewport,
+    defaultHeight = YumerinSize.IconViewport,
     viewportWidth = 24f,
     viewportHeight = 24f
 ).apply {
@@ -325,8 +309,8 @@ internal val YumerinPinIcon: ImageVector = ImageVector.Builder(
 
 internal val YumerinMutedIcon: ImageVector = ImageVector.Builder(
     name = "YumerinMutedIcon",
-    defaultWidth = 24.dp,
-    defaultHeight = 24.dp,
+    defaultWidth = YumerinSize.IconViewport,
+    defaultHeight = YumerinSize.IconViewport,
     viewportWidth = 24f,
     viewportHeight = 24f
 ).apply {
@@ -356,8 +340,8 @@ internal val YumerinMutedIcon: ImageVector = ImageVector.Builder(
 
 internal val YumerinAddIcon: ImageVector = ImageVector.Builder(
     name = "YumerinAddIcon",
-    defaultWidth = 24.dp,
-    defaultHeight = 24.dp,
+    defaultWidth = YumerinSize.IconViewport,
+    defaultHeight = YumerinSize.IconViewport,
     viewportWidth = 24f,
     viewportHeight = 24f
 ).apply {
@@ -380,8 +364,8 @@ internal val YumerinAddIcon: ImageVector = ImageVector.Builder(
 
 internal val YumerinEditIcon: ImageVector = ImageVector.Builder(
     name = "YumerinEditIcon",
-    defaultWidth = 24.dp,
-    defaultHeight = 24.dp,
+    defaultWidth = YumerinSize.IconViewport,
+    defaultHeight = YumerinSize.IconViewport,
     viewportWidth = 24f,
     viewportHeight = 24f
 ).apply {
@@ -404,8 +388,8 @@ internal val YumerinEditIcon: ImageVector = ImageVector.Builder(
 
 internal val YumerinMemoryIcon: ImageVector = ImageVector.Builder(
     name = "YumerinMemoryIcon",
-    defaultWidth = 24.dp,
-    defaultHeight = 24.dp,
+    defaultWidth = YumerinSize.IconViewport,
+    defaultHeight = YumerinSize.IconViewport,
     viewportWidth = 24f,
     viewportHeight = 24f
 ).apply {
@@ -434,8 +418,8 @@ internal val YumerinMemoryIcon: ImageVector = ImageVector.Builder(
 
 private val YumerinSendIcon: ImageVector = ImageVector.Builder(
     name = "YumerinSendIcon",
-    defaultWidth = 24.dp,
-    defaultHeight = 24.dp,
+    defaultWidth = YumerinSize.IconViewport,
+    defaultHeight = YumerinSize.IconViewport,
     viewportWidth = 24f,
     viewportHeight = 24f
 ).apply {
@@ -452,8 +436,8 @@ private val YumerinSendIcon: ImageVector = ImageVector.Builder(
 
 private val YumerinStopIcon: ImageVector = ImageVector.Builder(
     name = "YumerinStopIcon",
-    defaultWidth = 24.dp,
-    defaultHeight = 24.dp,
+    defaultWidth = YumerinSize.IconViewport,
+    defaultHeight = YumerinSize.IconViewport,
     viewportWidth = 24f,
     viewportHeight = 24f
 ).apply {
@@ -511,8 +495,8 @@ internal fun CompositeAvatar(members: List<CharacterProfile>, fallback: String) 
             Text(fallback.take(1), style = MaterialTheme.typography.titleLarge)
         } else {
             visible.forEachIndexed { index, member ->
-                val x = when (index % 2) { 0 -> (-8).dp; else -> 8.dp }
-                val y = when (index / 2) { 0 -> (-8).dp; else -> 8.dp }
+                val x = when (index % 2) { 0 -> -YumerinSpacing.Item; else -> YumerinSpacing.Item }
+                val y = when (index / 2) { 0 -> -YumerinSpacing.Item; else -> YumerinSpacing.Item }
                 Box(
                     modifier = Modifier
                         .offset(x, y)
@@ -529,9 +513,15 @@ internal fun CompositeAvatar(members: List<CharacterProfile>, fallback: String) 
 
 
 @Composable
-internal fun SwitchRow(title: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+internal fun SwitchRow(
+    title: String,
+    checked: Boolean,
+    description: String? = null,
+    onCheckedChange: (Boolean) -> Unit
+) {
     MiuixSwitchPreference(
         title = title,
+        summary = description,
         checked = checked,
         onCheckedChange = onCheckedChange,
         modifier = Modifier.fillMaxWidth()
@@ -572,14 +562,14 @@ internal fun SettingRow(
         modifier = Modifier
             .fillMaxWidth()
             .then(if (onClick == null) Modifier else Modifier.clickable(onClick = onClick))
-            .heightIn(min = 56.dp)
-            .padding(horizontal = 18.dp, vertical = 12.dp),
+            .heightIn(min = YumerinSize.PreferenceRow)
+            .padding(horizontal = YumerinSpacing.CardInset, vertical = YumerinSpacing.Field),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Field)
     ) {
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Tight)
         ) {
             Text(title, style = MaterialTheme.typography.bodyLarge)
             description?.let {
@@ -590,7 +580,7 @@ internal fun SettingRow(
                 )
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Compact)) {
             value?.let {
                 Text(
                     text = it,

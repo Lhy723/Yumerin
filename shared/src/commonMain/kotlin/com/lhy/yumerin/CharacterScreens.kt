@@ -1,5 +1,7 @@
 package com.lhy.yumerin
 
+import com.lhy.yumerin.designsystem.YumerinSpacing
+
 import androidx.compose.animation.*
 import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection
 import androidx.compose.foundation.*
@@ -23,6 +25,12 @@ import androidx.compose.ui.unit.dp
 import com.lhy.yumerin.core.model.*
 import com.lhy.yumerin.data.memory.*
 import com.lhy.yumerin.designsystem.*
+import com.lhy.yumerin.designsystem.YumerinAlertDialog as AlertDialog
+import com.lhy.yumerin.designsystem.YumerinButton as Button
+import com.lhy.yumerin.designsystem.YumerinOutlinedButton as OutlinedButton
+import com.lhy.yumerin.designsystem.YumerinOutlinedTextField as OutlinedTextField
+import com.lhy.yumerin.designsystem.YumerinTextButton as TextButton
+import top.yukonga.miuix.kmp.basic.HorizontalDivider as HorizontalDivider
 import com.lhy.yumerin.domain.*
 import com.lhy.yumerin.domain.memory.*
 import com.lhy.yumerin.domain.repository.*
@@ -83,8 +91,8 @@ internal fun CharactersPage(
                 value = query,
                 onValueChange = { query = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("搜索角色") },
-                placeholder = { Text("按名称或介绍查找") },
+                label = "搜索角色",
+                placeholder = "按名称或介绍查找",
                 singleLine = true
             )
         }
@@ -96,8 +104,8 @@ internal fun CharactersPage(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 22.dp, vertical = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                        .padding(horizontal = YumerinSpacing.CardInset, vertical = YumerinSpacing.PageSection),
+                    verticalArrangement = Arrangement.spacedBy(YumerinSpacing.FormField)
                 ) {
                     Text("从一个角色开始", style = MaterialTheme.typography.titleLarge)
                     Text(
@@ -111,7 +119,7 @@ internal fun CharactersPage(
         } else if (filteredCharacters.isEmpty()) {
             Text(
                 "没有找到匹配的角色",
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
+                modifier = Modifier.padding(horizontal = YumerinSpacing.Compact, vertical = YumerinSpacing.PageVertical),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -129,7 +137,7 @@ internal fun CharactersPage(
                 Text(if (showArchived) "收起已归档（${filteredArchived.size}）" else "已归档（${filteredArchived.size}）")
             }
             AnimatedVisibility(visible = showArchived) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Field)) {
                     filteredArchived.forEach { character ->
                         CharacterCard(character, true, onOpenProfile, onEdit, onCreateChat)
                     }
@@ -156,18 +164,18 @@ private fun CharacterCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .padding(YumerinSpacing.CardVertical),
+            verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Row)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onOpenProfile(character.id) },
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Row)
             ) {
                 Avatar(character.name.take(1), character.avatarUri)
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Compact)) {
                     Text(character.name, style = MaterialTheme.typography.titleLarge)
                     if (archived) {
                         Text("已归档", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -190,7 +198,7 @@ private fun CharacterCard(
                     Text(if (archived) "管理角色" else "编辑资料")
                 }
                 if (!archived) {
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(YumerinSpacing.Item))
                     Button(onClick = { onCreateChat(character) }) { Text("开始聊天") }
                 }
             }
@@ -226,7 +234,7 @@ internal fun CharacterDetailPage(
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Field)
         ) {
             MiuixBackButton(onClick = onBack)
             Text("角色详情", style = MaterialTheme.typography.titleLarge)
@@ -235,8 +243,8 @@ internal fun CharacterDetailPage(
         if (character == null) {
             MiuixCardSurface(Modifier.fillMaxWidth()) {
                 Column(
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.padding(horizontal = YumerinSpacing.LargeInset, vertical = YumerinSpacing.PageSection),
+                    verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Item)
                 ) {
                     Text("角色不存在", style = MaterialTheme.typography.titleLarge)
                     Text(
@@ -252,7 +260,7 @@ internal fun CharacterDetailPage(
                     .fillMaxWidth()
                     .padding(top = 6.dp, bottom = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(YumerinSpacing.FormField)
             ) {
                 Avatar(
                     text = character.name.take(1).ifBlank { "?" },
@@ -270,7 +278,7 @@ internal fun CharacterDetailPage(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Item)
             ) {
                 ProfileActionTile(
                                         icon = YumerinChatIcon,
@@ -302,7 +310,7 @@ internal fun CharacterDetailPage(
                         fallback = "还没有添加介绍。"
                     )
                     HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 18.dp),
+                        modifier = Modifier.padding(horizontal = YumerinSpacing.CardInset),
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
                     )
                     CharacterDetailInfoRow(
@@ -311,7 +319,7 @@ internal fun CharacterDetailPage(
                         fallback = "尚未设置"
                     )
                     HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 18.dp),
+                        modifier = Modifier.padding(horizontal = YumerinSpacing.CardInset),
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
                     )
                     CharacterDetailInfoRow(
@@ -326,7 +334,7 @@ internal fun CharacterDetailPage(
                         .joinToString("\n\n")
                     if (settingDetails.isNotBlank()) {
                         HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 18.dp),
+                            modifier = Modifier.padding(horizontal = YumerinSpacing.CardInset),
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
                         )
                         CharacterDetailInfoRow(label = "背景与互动方式", value = settingDetails)
@@ -339,7 +347,7 @@ internal fun CharacterDetailPage(
                 MiuixCardSurface(Modifier.fillMaxWidth()) {
                     Text(
                         "还没有加入群聊",
-                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp),
+                        modifier = Modifier.padding(horizontal = YumerinSpacing.CardInset, vertical = YumerinSpacing.CardInset),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -355,7 +363,7 @@ internal fun CharacterDetailPage(
                 }
             }
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(YumerinSpacing.PageSection))
     }
 }
 
@@ -368,7 +376,7 @@ private fun CharacterDetailInfoRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 18.dp, vertical = 14.dp),
+            .padding(horizontal = YumerinSpacing.CardInset, vertical = YumerinSpacing.Row),
         verticalArrangement = Arrangement.spacedBy(5.dp)
     ) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -394,12 +402,12 @@ private fun CharacterGroupCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 18.dp, vertical = 16.dp),
+                .padding(horizontal = YumerinSpacing.CardInset, vertical = YumerinSpacing.CardVertical),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Row)
         ) {
-            Avatar(group.name.take(1).ifBlank { "群" }, group.avatarUri, size = 48.dp)
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Avatar(group.name.take(1).ifBlank { "群" }, group.avatarUri, size = YumerinSize.Avatar)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Compact)) {
                 Text(group.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
                     if (group.archived) "已归档 · ${group.memberCharacterIds.size} 位角色" else "群聊 · ${group.memberCharacterIds.size} 位角色",
@@ -412,7 +420,7 @@ private fun CharacterGroupCard(
                     imageVector = YumerinChevronRight,
                     contentDescription = "打开群聊",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(YumerinSize.SmallIcon)
                 )
             }
         }
@@ -456,14 +464,14 @@ internal fun CharacterEditorPage(
     PageColumn {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Field)
         ) {
             MiuixBackButton(onClick = onBack)
             Text(if (existing == null) "创建角色" else "编辑角色", style = MaterialTheme.typography.headlineLarge)
         }
         CharacterEditorSection("角色资料") {
-            OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), label = { Text("名称") }, singleLine = true)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), label = "名称", singleLine = true)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Field)) {
                 Avatar(name.ifBlank { "?" }, avatarUri)
                 Column(Modifier.weight(1f)) {
                     Text(if (avatarUri == null) "使用首字母头像" else "已设置本地头像")
@@ -474,19 +482,19 @@ internal fun CharacterEditorPage(
                 description,
                 { description = it },
                 Modifier.fillMaxWidth(),
-                label = { Text("角色介绍") },
+                label = "角色介绍",
                 minLines = 2,
                 maxLines = 4
             )
         }
 
         CharacterEditorSection("个性与背景") {
-            OutlinedTextField(relationship, { relationship = it }, Modifier.fillMaxWidth(), label = { Text("关系设定") }, minLines = 2)
-            OutlinedTextField(personality, { personality = it }, Modifier.fillMaxWidth(), label = { Text("人格") }, minLines = 2)
-            OutlinedTextField(tone, { tone = it }, Modifier.fillMaxWidth(), label = { Text("语气") }, minLines = 2)
-            OutlinedTextField(setting, { setting = it }, Modifier.fillMaxWidth(), label = { Text("世界观 / 场景") }, minLines = 2)
-            OutlinedTextField(backstory, { backstory = it }, Modifier.fillMaxWidth(), label = { Text("背景故事") }, minLines = 2)
-            OutlinedTextField(interactionStyle, { interactionStyle = it }, Modifier.fillMaxWidth(), label = { Text("互动风格") }, minLines = 2)
+            OutlinedTextField(relationship, { relationship = it }, Modifier.fillMaxWidth(), label = "关系设定", minLines = 2)
+            OutlinedTextField(personality, { personality = it }, Modifier.fillMaxWidth(), label = "人格", minLines = 2)
+            OutlinedTextField(tone, { tone = it }, Modifier.fillMaxWidth(), label = "语气", minLines = 2)
+            OutlinedTextField(setting, { setting = it }, Modifier.fillMaxWidth(), label = "世界观 / 场景", minLines = 2)
+            OutlinedTextField(backstory, { backstory = it }, Modifier.fillMaxWidth(), label = "背景故事", minLines = 2)
+            OutlinedTextField(interactionStyle, { interactionStyle = it }, Modifier.fillMaxWidth(), label = "互动风格", minLines = 2)
         }
 
         CharacterEditorSection("对话与主动互动") {
@@ -522,14 +530,14 @@ internal fun CharacterEditorPage(
                 proactiveDailyLimit,
                 { proactiveDailyLimit = it },
                 Modifier.fillMaxWidth(),
-                label = { Text("每日主动消息上限") },
+                label = "每日主动消息上限",
                 supportingText = { Text("范围 1–20，默认 3 条") },
                 singleLine = true
             )
         }
 
         if (onOpenMemory != null || onArchive != null || onDelete != null) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Compact)) {
                 onOpenMemory?.let {
                     OutlinedButton(onClick = it, modifier = Modifier.fillMaxWidth()) { Text("管理长期记忆") }
                 }
@@ -604,8 +612,8 @@ private fun CharacterEditorSection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(YumerinSpacing.CardInset),
+            verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Field)
         ) {
             Text(title, style = MaterialTheme.typography.titleLarge)
             content()
@@ -624,7 +632,7 @@ internal fun MemoryPage(
         PageColumn {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Field)
             ) {
                 MiuixBackButton(onClick = onBack)
                 Text("找不到角色", style = MaterialTheme.typography.headlineLarge)
@@ -640,13 +648,13 @@ internal fun MemoryPage(
     PageColumn {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Field)
         ) {
             MiuixBackButton(onClick = onBack)
             Text("${character.name}的记忆", style = MaterialTheme.typography.headlineLarge)
         }
         Text("只属于这个角色。删除聊天不会删除这里的长期记忆。")
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Item)) {
             TextButton(onClick = { showPendingOnly = !showPendingOnly }) {
                 Text(if (showPendingOnly) "显示全部" else "只看待审核（${memories.count { it.reviewState == MemoryReviewState.PENDING_REVIEW }}）")
             }
@@ -668,7 +676,7 @@ internal fun MemoryPage(
         val visibleMemories = memories.filter { !showPendingOnly || it.reviewState == MemoryReviewState.PENDING_REVIEW }
         if (visibleMemories.isEmpty()) {
             MiuixCardSurface(Modifier.fillMaxWidth()) {
-                Text("还没有稳定记忆。普通聊天中的明确偏好和资料会在开启自动维护时写入。", Modifier.padding(18.dp))
+                Text("还没有稳定记忆。普通聊天中的明确偏好和资料会在开启自动维护时写入。", Modifier.padding(YumerinSpacing.CardInset))
             }
         } else {
             visibleMemories.forEach { memory ->
@@ -676,8 +684,8 @@ internal fun MemoryPage(
                     Column(
                         Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                            .padding(YumerinSpacing.CardVertical),
+                        verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Item)
                     ) {
                         Text(memory.content, style = MaterialTheme.typography.bodyLarge)
                         Text(
@@ -689,7 +697,7 @@ internal fun MemoryPage(
                         )
                         memory.reviewReason?.let { Text("审核原因：$it", color = MaterialTheme.colorScheme.error) }
                         Text("来源：${memory.sourceChatId ?: "未知聊天"} · ${memory.createdAt}", style = MaterialTheme.typography.bodySmall)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Item)) {
                             TextButton(onClick = {
                                 editingMemory = memory
                                 editingText = memory.content
@@ -730,7 +738,7 @@ internal fun MemoryPage(
         AlertDialog(
             onDismissRequest = { editingMemory = null },
             title = { Text("编辑记忆") },
-            text = { OutlinedTextField(editingText, { editingText = it }, Modifier.fillMaxWidth(), label = { Text("内容") }) },
+            text = { OutlinedTextField(editingText, { editingText = it }, Modifier.fillMaxWidth(), label = "内容") },
             confirmButton = {
                 TextButton(onClick = {
                     scope.launch {

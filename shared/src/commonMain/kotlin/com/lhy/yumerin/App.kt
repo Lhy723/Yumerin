@@ -14,6 +14,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.lhy.yumerin.core.model.AppReleaseMetadata
 import com.lhy.yumerin.core.model.AppSettings
 import com.lhy.yumerin.core.model.EntityId
 import com.lhy.yumerin.core.model.ThemeMode
@@ -21,12 +22,17 @@ import com.lhy.yumerin.data.memory.InMemoryAppGraph
 import com.lhy.yumerin.designsystem.ChatListSkeleton
 import com.lhy.yumerin.designsystem.MotionTokens
 import com.lhy.yumerin.designsystem.isSystemReducedMotion
+import com.lhy.yumerin.designsystem.LocalComponentMaterial
+import com.lhy.yumerin.designsystem.YumerinTypography
+import com.lhy.yumerin.designsystem.YumerinAlertDialog as AlertDialog
+import com.lhy.yumerin.designsystem.YumerinTextButton as TextButton
 import com.lhy.yumerin.domain.AppGraph
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.theme.Colors
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.ThemeController
+import top.yukonga.miuix.kmp.basic.Surface as Surface
 
 internal enum class AppPage(
     val label: String
@@ -117,7 +123,10 @@ fun App(
     onImportDataRequest: ((onPayload: (String) -> Unit) -> Unit) = {},
     onPickAvatar: ((onSelected: (String?) -> Unit) -> Unit) = { onSelected -> onSelected(null) },
     onPickLocalModel: ((onSelected: (String?) -> Unit) -> Unit) = { onSelected -> onSelected(null) },
-    skipAdultConfirmationForDebug: Boolean = false
+    skipAdultConfirmationForDebug: Boolean = false,
+    appVersionName: String = "开发版",
+    onCheckForUpdates: (suspend () -> AppReleaseMetadata)? = null,
+    onOpenExternalUrl: ((String) -> Unit)? = null
 ) {
     val graph = appGraph ?: remember { InMemoryAppGraph() }
     val settings by graph.settings.observeSettings().collectAsState(AppSettings())
@@ -134,7 +143,9 @@ fun App(
         ThemeMode.DARK -> true
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
-    val themeColors = remember(settings.themeColor) { settings.themeColor.colorSchemes() }
+    val themeColors = remember(settings.themeColor, settings.componentMaterial) {
+        settings.themeColor.colorSchemes(settings.componentMaterial)
+    }
 
     val themeController = remember(isDarkTheme, themeColors) {
         ThemeController(
@@ -144,29 +155,35 @@ fun App(
         )
     }
 
-    MiuixTheme(controller = themeController) {
-        MaterialTheme(
-            colorScheme = MiuixTheme.colorScheme.toMaterialColorScheme(isDarkTheme)
-        ) {
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onSurface
+    CompositionLocalProvider(LocalComponentMaterial provides settings.componentMaterial) {
+        MiuixTheme(controller = themeController, textStyles = YumerinTypography.miuix) {
+            MaterialTheme(
+                colorScheme = MiuixTheme.colorScheme.toMaterialColorScheme(isDarkTheme),
+                typography = YumerinTypography.material3(MiuixTheme.textStyles)
             ) {
-                AppContent(
-                    graph = graph,
-                    appIcon = appIcon,
-                    initialChatId = initialChatId,
-                    settings = settings,
-                    reducedMotion = reducedMotion,
-                    initialized = initialized,
-                    onBackgroundPermissionRequest = onBackgroundPermissionRequest,
-                    onExportData = onExportData,
-                    onImportDataRequest = onImportDataRequest,
-                    onPickAvatar = onPickAvatar,
-                    onPickLocalModel = onPickLocalModel,
-                    skipAdultConfirmationForDebug = skipAdultConfirmationForDebug
-                )
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ) {
+                    AppContent(
+                        graph = graph,
+                        appIcon = appIcon,
+                        initialChatId = initialChatId,
+                        settings = settings,
+                        reducedMotion = reducedMotion,
+                        initialized = initialized,
+                        onBackgroundPermissionRequest = onBackgroundPermissionRequest,
+                        onExportData = onExportData,
+                        onImportDataRequest = onImportDataRequest,
+                        onPickAvatar = onPickAvatar,
+                        onPickLocalModel = onPickLocalModel,
+                        skipAdultConfirmationForDebug = skipAdultConfirmationForDebug,
+                        appVersionName = appVersionName,
+                        onCheckForUpdates = onCheckForUpdates,
+                        onOpenExternalUrl = onOpenExternalUrl
+                    )
+                }
             }
         }
     }
@@ -265,7 +282,10 @@ private fun AppContent(
     onImportDataRequest: ((onPayload: (String) -> Unit) -> Unit),
     onPickAvatar: ((onSelected: (String?) -> Unit) -> Unit),
     onPickLocalModel: ((onSelected: (String?) -> Unit) -> Unit),
-    skipAdultConfirmationForDebug: Boolean
+    skipAdultConfirmationForDebug: Boolean,
+    appVersionName: String,
+    onCheckForUpdates: (suspend () -> AppReleaseMetadata)?,
+    onOpenExternalUrl: ((String) -> Unit)?
 ) {
     val navigationBackdrop = rememberLayerBackdrop()
     val glassButtonBackdrop = rememberLayerBackdrop()
@@ -678,7 +698,10 @@ private fun AppContent(
                                         onBack = { destination = AppDestination.MODELS }
                                     )
                                     is AppDestination.ABOUT -> AboutPage(
-                                                                                appIcon = appIcon,
+                                        appIcon = appIcon,
+                                        currentVersionName = appVersionName,
+                                        onCheckForUpdates = onCheckForUpdates,
+                                        onOpenExternalUrl = onOpenExternalUrl,
                                         onBack = { destination = screen.returnTo }
                                     )
                                     AppDestination.SCHEDULES -> SchedulesPage(

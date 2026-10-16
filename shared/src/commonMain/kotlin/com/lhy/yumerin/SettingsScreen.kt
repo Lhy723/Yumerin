@@ -1,5 +1,7 @@
 package com.lhy.yumerin
 
+import com.lhy.yumerin.designsystem.YumerinSpacing
+
 import androidx.compose.animation.*
 import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection
 import androidx.compose.foundation.*
@@ -19,7 +21,6 @@ import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.*
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.lhy.yumerin.core.model.*
 import com.lhy.yumerin.data.memory.*
 import com.lhy.yumerin.designsystem.*
@@ -31,7 +32,6 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlin.time.Clock
 import top.yukonga.miuix.kmp.basic.ButtonDefaults as MiuixButtonDefaults
-import top.yukonga.miuix.kmp.basic.Card as MiuixCard
 import top.yukonga.miuix.kmp.basic.DropdownEntry as MiuixDropdownEntry
 import top.yukonga.miuix.kmp.basic.DropdownItem as MiuixDropdownItem
 import top.yukonga.miuix.kmp.basic.NumberPicker as MiuixNumberPicker
@@ -68,9 +68,9 @@ internal fun SettingsPage(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp, bottom = 8.dp),
+                .padding(top = YumerinSpacing.PageVertical, bottom = YumerinSpacing.PageVertical),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Dense)
         ) {
             Box(contentAlignment = Alignment.BottomEnd) {
                 Avatar(
@@ -142,7 +142,7 @@ internal fun SettingsPage(
                 "数据与存储", "导出、导入和本地数据管理", YumerinStorageIcon, onOpenDataManagement
             )
             SettingsOverviewRow(
-                "关于 Yumerin", "版本信息和开源组件", YumerinInfoIcon, onOpenAbout
+                "关于 Yumerin", "版本信息、检查更新和开源组件", YumerinInfoIcon, onOpenAbout
             )
         }
         Spacer(Modifier.height(96.dp))
@@ -178,8 +178,8 @@ internal fun SettingsCategoryPage(
                 MiuixBackButton(onClick = onBack)
                 MiuixText(
                     category.title,
-                    modifier = Modifier.padding(start = 12.dp),
-                    style = MiuixTheme.textStyles.title2.copy(fontSize = 28.sp)
+                    modifier = Modifier.padding(start = YumerinSpacing.Field),
+                    style = YumerinTypography.SettingsTitle
                 )
             }
 
@@ -202,6 +202,14 @@ internal fun SettingsCategoryPage(
                             selectedIndex = ThemeColor.entries.indexOf(settings.themeColor),
                             onOptionSelected = { index ->
                                 onSettingsChanged(settings.copy(themeColor = ThemeColor.entries[index]))
+                            }
+                        )
+                        SettingsChoicePreference(
+                            title = "组件材质",
+                            options = ComponentMaterial.entries.map { SettingsChoiceOption(it.label()) },
+                            selectedIndex = ComponentMaterial.entries.indexOf(settings.componentMaterial),
+                            onOptionSelected = { index ->
+                                onSettingsChanged(settings.copy(componentMaterial = ComponentMaterial.entries[index]))
                             }
                         )
                         SettingsSwitchRow(
@@ -278,8 +286,8 @@ internal fun SettingsCategoryPage(
                         }
                     )
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = YumerinSpacing.CardInset),
+                        verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Compact)
                     ) {
                         MiuixTextField(
                             dailyLimitText,
@@ -296,7 +304,7 @@ internal fun SettingsCategoryPage(
                         )
                         MiuixText(
                             "范围 1–20；输入有效数值后立即生效",
-                            modifier = Modifier.padding(start = 16.dp, bottom = 8.dp),
+                            modifier = Modifier.padding(start = YumerinSpacing.CardVertical, bottom = YumerinSpacing.PageVertical),
                             style = MiuixTheme.textStyles.body2,
                             color = MiuixTheme.colorScheme.onSurfaceVariantActions
                         )
@@ -391,8 +399,8 @@ internal fun SettingsCategoryPage(
                     )
                 }
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.fillMaxWidth().padding(top = YumerinSpacing.Field),
+                    horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Field)
                 ) {
                     MiuixTextButton(
                         text = "取消",
@@ -447,7 +455,7 @@ private fun SettingsChoicePreference(
                         { modifier ->
                             Box(
                                 modifier = modifier
-                                    .size(22.dp)
+                                    .size(YumerinSize.Icon)
                                     .clip(CircleShape)
                                     .background(swatch)
                                     .then(
@@ -487,8 +495,8 @@ private fun SettingsOverviewRow(
         startAction = {
             Box(
                 modifier = Modifier
-                    .size(42.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .size(YumerinSize.PreferenceIconContainer)
+                    .clip(RoundedCornerShape(YumerinShape.ControlRadius))
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                 contentAlignment = Alignment.Center
             ) {
@@ -496,7 +504,7 @@ private fun SettingsOverviewRow(
                     imageVector = icon,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(YumerinSize.Icon)
                 )
             }
         },
@@ -517,10 +525,7 @@ private fun SettingsSection(
 private fun SettingsPreferenceCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
-    MiuixCard(
-        modifier = Modifier.fillMaxWidth(),
-        insideMargin = PaddingValues(0.dp)
-    ) {
+    MiuixCardSurface(Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.fillMaxWidth(), content = content)
     }
 }
@@ -531,12 +536,4 @@ private fun SettingsSwitchRow(
     description: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
-) {
-    MiuixSwitchPreference(
-        title = title,
-        summary = description,
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        modifier = Modifier.fillMaxWidth()
-    )
-}
+) = SwitchRow(title, checked, description, onCheckedChange)

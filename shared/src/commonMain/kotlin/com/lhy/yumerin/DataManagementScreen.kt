@@ -1,5 +1,7 @@
 package com.lhy.yumerin
 
+import com.lhy.yumerin.designsystem.YumerinSpacing
+
 import androidx.compose.animation.*
 import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection
 import androidx.compose.foundation.*
@@ -23,6 +25,9 @@ import androidx.compose.ui.unit.dp
 import com.lhy.yumerin.core.model.*
 import com.lhy.yumerin.data.memory.*
 import com.lhy.yumerin.designsystem.*
+import com.lhy.yumerin.designsystem.YumerinAlertDialog as AlertDialog
+import com.lhy.yumerin.designsystem.YumerinButton as Button
+import com.lhy.yumerin.designsystem.YumerinTextButton as TextButton
 import com.lhy.yumerin.domain.*
 import com.lhy.yumerin.domain.memory.*
 import com.lhy.yumerin.domain.repository.*
@@ -46,13 +51,13 @@ internal fun DataManagementPage(
     PageColumn {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Field)
         ) {
             MiuixBackButton(onClick = onBack)
             Text("数据管理", style = MaterialTheme.typography.headlineLarge)
         }
         MiuixCardSurface(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.padding(YumerinSpacing.CardInset), verticalArrangement = Arrangement.spacedBy(YumerinSpacing.FormField)) {
                 Text("可携带数据包", style = MaterialTheme.typography.titleLarge)
                 Text("导出角色、聊天、群组、记忆、模型元数据和主动计划；API Key 与大型模型文件永不进入导出包。导入采用合并方式，不默认删除已有数据。")
                 Button(onClick = { scope.launch { onExportData(graph.portableData.exportData()) } }, modifier = Modifier.fillMaxWidth()) { Text("导出数据") }
@@ -83,7 +88,7 @@ internal fun DataManagementPage(
                             else "发现 ${preview.conflictCount} 个同 ID 冲突，请明确选择冲突处理方式。",
                             color = if (preview.conflictCount == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                         )
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Item)) {
                             Button(
                                 onClick = {
                                     val importPayload = pendingImportPayload ?: return@Button
@@ -116,7 +121,7 @@ internal fun DataManagementPage(
             }
         }
         MiuixCardSurface(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.padding(YumerinSpacing.CardInset), verticalArrangement = Arrangement.spacedBy(YumerinSpacing.FormField)) {
                 Text("清除全部本地数据", style = MaterialTheme.typography.titleLarge)
                 Text("会停止后台陪伴，删除角色、聊天、群组、记忆、头像、模型配置和 API Key。此操作不可恢复，建议先导出。", color = MaterialTheme.colorScheme.error)
                 Button(onClick = { showWipeConfirmation = true }, modifier = Modifier.fillMaxWidth()) { Text("清除全部数据") }

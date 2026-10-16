@@ -342,6 +342,7 @@ class RoomPortableDataManager(
         .put("quietEndMinutes", value.quietEndMinutes).put("contextCompressionThreshold", value.contextCompressionThreshold)
         .putNullable("defaultModelProfileId", value.defaultModelProfileId).put("reducedMotionEnabled", value.reducedMotionEnabled)
         .put("userName", value.userName).put("themeColor", value.themeColor)
+        .put("componentMaterial", value.componentMaterial)
 
     private fun membershipJson(value: GroupMembershipWindowEntity) = JSONObject()
         .put("id", value.id).put("groupId", value.groupId).put("characterId", value.characterId)
@@ -453,7 +454,8 @@ class RoomPortableDataManager(
         quietStartMinutes = v.optInt("quietStartMinutes", 1380), quietEndMinutes = v.optInt("quietEndMinutes", 480),
         contextCompressionThreshold = v.optDouble("contextCompressionThreshold", 0.8).toFloat(),
         defaultModelProfileId = v.nullableString("defaultModelProfileId"), reducedMotionEnabled = v.optBoolean("reducedMotionEnabled", false),
-        userName = v.optString("userName", "Yumerin User"), themeColor = v.optString("themeColor", "BLUE")
+        userName = v.optString("userName", "Yumerin User"), themeColor = v.optString("themeColor", "BLUE"),
+        componentMaterial = v.optString("componentMaterial", "STANDARD")
     )
 
     private fun parseMembership(v: JSONObject) = GroupMembershipWindowEntity(

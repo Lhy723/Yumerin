@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.lhy.yumerin.designsystem.YumerinShape
 import top.yukonga.miuix.kmp.basic.Card as MiuixCard
 
 /** A plain Miuix card surface, with no blur, translucency, or added glass effects. */
@@ -17,6 +18,7 @@ internal fun MiuixCardSurface(
 ) {
     MiuixCard(
         modifier = modifier,
+        cornerRadius = YumerinShape.CardRadius,
         insideMargin = PaddingValues(0.dp)
     ) {
         Box(

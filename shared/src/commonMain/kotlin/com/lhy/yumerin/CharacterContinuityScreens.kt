@@ -16,11 +16,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 import com.lhy.yumerin.core.model.CharacterProfile
 import com.lhy.yumerin.core.model.EntityId
-import top.yukonga.miuix.kmp.basic.Button as MiuixButton
-import top.yukonga.miuix.kmp.basic.ButtonDefaults as MiuixButtonDefaults
+import com.lhy.yumerin.designsystem.YumerinButton as MiuixButton
+import com.lhy.yumerin.designsystem.YumerinShape
+import com.lhy.yumerin.designsystem.YumerinSpacing
 import top.yukonga.miuix.kmp.basic.Card as MiuixCard
 import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
 import top.yukonga.miuix.kmp.basic.Slider as MiuixSlider
@@ -46,7 +46,7 @@ internal fun CharacterContinuityListPage(
         PageColumn {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Field)
             ) {
                 MiuixBackButton(onClick = onBack)
                 MiuixText("角色连续性", style = MiuixTheme.textStyles.title2)
@@ -67,10 +67,10 @@ internal fun CharacterContinuityListPage(
                     MiuixCard(
                         onClick = { onOpenCharacter(character.id) },
                         modifier = Modifier.fillMaxWidth(),
-                        cornerRadius = 18.dp,
-                        insideMargin = PaddingValues(16.dp)
+                        cornerRadius = YumerinShape.CardRadius,
+                        insideMargin = PaddingValues(YumerinSpacing.CardInset)
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Compact)) {
                             MiuixText(character.name, style = MiuixTheme.textStyles.headline1)
                             MiuixText(
                                 "查看和调整近期心情、信任感与亲近感",
@@ -105,7 +105,7 @@ internal fun CharacterContinuityPage(
         PageColumn {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Field)
             ) {
                 MiuixBackButton(onClick = onBack)
                 MiuixText(character.name, style = MiuixTheme.textStyles.title2)
@@ -146,15 +146,11 @@ internal fun CharacterContinuityPage(
             }
             MiuixButton(
                 onClick = { onSave(moodPosition * 2f - 1f, trust, closeness) },
-                modifier = Modifier.fillMaxWidth(),
-                minWidth = 0.dp,
-                minHeight = 48.dp,
-                cornerRadius = 18.dp,
-                colors = MiuixButtonDefaults.buttonColorsPrimary()
+                modifier = Modifier.fillMaxWidth()
             ) {
                 MiuixText("保存连续性", style = MiuixTheme.textStyles.button)
             }
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(YumerinSpacing.PageSection))
         }
     }
 }
@@ -163,12 +159,12 @@ internal fun CharacterContinuityPage(
 private fun ContinuityCard(title: String, content: @Composable () -> Unit) {
     MiuixCard(
         modifier = Modifier.fillMaxWidth(),
-        cornerRadius = 18.dp,
-        insideMargin = PaddingValues(16.dp)
+        cornerRadius = YumerinShape.CardRadius,
+        insideMargin = PaddingValues(YumerinSpacing.CardInset)
     ) {
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Item)
         ) {
             MiuixText(title, style = MiuixTheme.textStyles.title4)
             content()

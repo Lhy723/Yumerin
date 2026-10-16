@@ -1,5 +1,7 @@
 package com.lhy.yumerin
 
+import com.lhy.yumerin.designsystem.YumerinSpacing
+
 import androidx.compose.animation.*
 import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection
 import androidx.compose.foundation.*
@@ -23,6 +25,10 @@ import androidx.compose.ui.unit.dp
 import com.lhy.yumerin.core.model.*
 import com.lhy.yumerin.data.memory.*
 import com.lhy.yumerin.designsystem.*
+import com.lhy.yumerin.designsystem.YumerinButton as Button
+import com.lhy.yumerin.designsystem.YumerinOutlinedTextField as OutlinedTextField
+import com.lhy.yumerin.designsystem.YumerinTextButton as TextButton
+import top.yukonga.miuix.kmp.basic.HorizontalDivider as HorizontalDivider
 import com.lhy.yumerin.domain.*
 import com.lhy.yumerin.domain.memory.*
 import com.lhy.yumerin.domain.repository.*
@@ -46,9 +52,9 @@ internal fun ProfilePage(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 12.dp, bottom = 8.dp),
+                .padding(top = YumerinSpacing.Field, bottom = YumerinSpacing.PageVertical),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(YumerinSpacing.FormField)
         ) {
             Avatar(
                 text = displayName.take(1),
@@ -65,7 +71,7 @@ internal fun ProfilePage(
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Item)
         ) {
             ProfileActionTile(
                                 icon = YumerinAddIcon,
@@ -103,7 +109,7 @@ internal fun ProfilePage(
                     description = "管理个人头像和显示名称"
                 )
                 HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 18.dp),
+                    modifier = Modifier.padding(horizontal = YumerinSpacing.CardInset),
                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
                 )
                 SettingRow(
@@ -119,12 +125,12 @@ internal fun ProfilePage(
             Column(Modifier.fillMaxWidth()) {
                 SettingRow(
                     title = "设置",
-                    value = "${settings.themeMode.label()} · ${settings.themeColor.label()}",
+                    value = "${settings.themeMode.label()} · ${settings.themeColor.label()} · ${settings.componentMaterial.label()}",
                     onClick = onOpenSettings,
                     description = "主题和页面动效在设置的“外观”中调整"
                 )
                 HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 18.dp),
+                    modifier = Modifier.padding(horizontal = YumerinSpacing.CardInset),
                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
                 )
                 SettingRow(
@@ -163,7 +169,7 @@ internal fun ProfileActionTile(
                 imageVector = icon,
                 contentDescription = null,
                 tint = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(YumerinSize.SmallIcon)
             )
             Text(
                 text = title,
@@ -190,7 +196,7 @@ internal fun UserProfilePage(
     PageColumn {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Field)
         ) {
             MiuixBackButton(onClick = onBack)
             Text("个人资料", style = MaterialTheme.typography.headlineLarge)
@@ -199,13 +205,13 @@ internal fun UserProfilePage(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(YumerinSpacing.CardInset),
+                verticalArrangement = Arrangement.spacedBy(YumerinSpacing.CardVertical)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Row)
                 ) {
                     Avatar(
                         normalizedName.take(1).ifBlank { "Y" },
@@ -214,7 +220,7 @@ internal fun UserProfilePage(
                     )
                     Column(
                         modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                        verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Compact)
                     ) {
                         Text("个人头像", style = MaterialTheme.typography.titleMedium)
                         Text(
@@ -235,7 +241,7 @@ internal fun UserProfilePage(
                     value = name,
                     onValueChange = { name = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("显示名称") },
+                    label = "显示名称",
                     supportingText = { Text("这个名称会显示在个人资料中。") },
                     singleLine = true
                 )

@@ -1,7 +1,8 @@
 package com.lhy.yumerin
 
+import com.lhy.yumerin.designsystem.YumerinSpacing
+
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -10,7 +11,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.lhy.yumerin.core.model.AppSettings
 import com.lhy.yumerin.core.model.ContextLengthMode
 import com.lhy.yumerin.core.model.GenerationParameters
@@ -19,10 +19,10 @@ import com.lhy.yumerin.core.model.LocalModelState
 import com.lhy.yumerin.core.model.ModelProfile
 import com.lhy.yumerin.core.model.ModelProviderKind
 import com.lhy.yumerin.core.model.newEntityId
+import com.lhy.yumerin.designsystem.YumerinButton as MiuixButton
 import com.lhy.yumerin.domain.AppGraph
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.basic.Button as MiuixButton
-import top.yukonga.miuix.kmp.basic.ButtonDefaults as MiuixButtonDefaults
+import top.yukonga.miuix.kmp.basic.HorizontalDivider as HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
 import top.yukonga.miuix.kmp.basic.Text as MiuixText
 import top.yukonga.miuix.kmp.basic.TextButton as MiuixTextButton
@@ -63,7 +63,7 @@ internal fun LocalModelsPage(
         PageColumn {
             Row(
                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Field)
             ) {
                 MiuixBackButton(onClick = onBack)
                 MiuixText("本地模型", style = MiuixTheme.textStyles.title2)
@@ -71,8 +71,8 @@ internal fun LocalModelsPage(
 
             MiuixCardSurface(Modifier.fillMaxWidth()) {
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(18.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.fillMaxWidth().padding(YumerinSpacing.CardInset),
+                    verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Item)
                 ) {
                     MiuixText("设备端模型", style = MiuixTheme.textStyles.title2)
                     MiuixText(
@@ -91,8 +91,8 @@ internal fun LocalModelsPage(
             if (editing) {
                 MiuixCardSurface(Modifier.fillMaxWidth()) {
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(18.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        modifier = Modifier.fillMaxWidth().padding(YumerinSpacing.CardInset),
+                        verticalArrangement = Arrangement.spacedBy(YumerinSpacing.FormField)
                     ) {
                         MiuixText("模型信息", style = MiuixTheme.textStyles.subtitle)
                         MiuixTextField(artifactName, { artifactName = it }, Modifier.fillMaxWidth(), label = "模型名称", singleLine = true)
@@ -152,10 +152,7 @@ internal fun LocalModelsPage(
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = artifactName.isNotBlank() && artifactVersion.isNotBlank() && artifactSha256.length == 64,
-                            minWidth = 0.dp,
-                            minHeight = 48.dp,
-                            colors = MiuixButtonDefaults.buttonColorsPrimary()
+                            enabled = artifactName.isNotBlank() && artifactVersion.isNotBlank() && artifactSha256.length == 64
                         ) {
                             MiuixText("保存模型信息", style = MiuixTheme.textStyles.button)
                         }
@@ -170,7 +167,7 @@ internal fun LocalModelsPage(
                 MiuixCardSurface(Modifier.fillMaxWidth()) {
                     MiuixText(
                         "当前没有本地模型。添加模型信息后，可以导入 .litertlm 文件或下载官方来源。",
-                        modifier = Modifier.padding(18.dp)
+                        modifier = Modifier.padding(YumerinSpacing.CardInset)
                     )
                 }
             } else {
@@ -181,8 +178,8 @@ internal fun LocalModelsPage(
                     }
                     MiuixCardSurface(Modifier.fillMaxWidth()) {
                         Column(
-                            modifier = Modifier.fillMaxWidth().padding(18.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            modifier = Modifier.fillMaxWidth().padding(YumerinSpacing.CardInset),
+                            verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Item)
                         ) {
                             MiuixText(artifact.displayName, style = MiuixTheme.textStyles.subtitle)
                             MiuixText(
@@ -204,7 +201,7 @@ internal fun LocalModelsPage(
 
                             when (artifact.state) {
                                 LocalModelState.CATALOGUED, LocalModelState.FAILED -> {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Item)) {
                                         MiuixTextButton(
                                             text = "导入文件",
                                             onClick = {
@@ -235,7 +232,7 @@ internal fun LocalModelsPage(
                                 }
 
                                 LocalModelState.DOWNLOADING -> {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Item)) {
                                         MiuixTextButton(
                                             text = "继续下载",
                                             onClick = {
@@ -320,10 +317,7 @@ internal fun LocalModelsPage(
                                                     }
                                                 }
                                             },
-                                            modifier = Modifier.fillMaxWidth(),
-                                            minWidth = 0.dp,
-                                            minHeight = 48.dp,
-                                            colors = MiuixButtonDefaults.buttonColorsPrimary()
+                                            modifier = Modifier.fillMaxWidth()
                                         ) {
                                             MiuixText(
                                                 if (shouldSetAsDefault) "添加并设为默认" else "添加到模型配置",

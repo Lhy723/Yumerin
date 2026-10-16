@@ -24,6 +24,9 @@ import androidx.compose.ui.unit.dp
 import com.lhy.yumerin.core.model.*
 import com.lhy.yumerin.data.memory.*
 import com.lhy.yumerin.designsystem.*
+import com.lhy.yumerin.designsystem.YumerinAlertDialog as AlertDialog
+import com.lhy.yumerin.designsystem.YumerinTextButton as TextButton
+import top.yukonga.miuix.kmp.basic.Surface as Surface
 import com.lhy.yumerin.domain.*
 import com.lhy.yumerin.domain.memory.*
 import com.lhy.yumerin.domain.repository.*
@@ -62,7 +65,7 @@ internal fun ChatDetailPage(
     val chatBackdrop = rememberLayerBackdrop()
     val density = LocalDensity.current
     var composerSurfaceHeightPx by remember(chatId) { mutableIntStateOf(0) }
-    val composerBottomPadding = with(density) { composerSurfaceHeightPx.toDp() } + 28.dp
+    val composerBottomPadding = with(density) { composerSurfaceHeightPx.toDp() } + YumerinChatTokens.ComposerBottomClearance
     var followNewMessages by remember(chatId) { mutableStateOf(true) }
     var didInitialScroll by remember(chatId) { mutableStateOf(false) }
     var pendingAutoScroll by remember(chatId) { mutableStateOf(false) }
@@ -188,23 +191,23 @@ internal fun ChatDetailPage(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = YumerinSpacing.Field, vertical = YumerinSpacing.Item),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Item)
         ) {
             MiuixBackButton(onClick = onBack)
             MiuixGlassSurface(
                 modifier = Modifier
                     .weight(1f)
-                    .height(62.dp),
-                shape = RoundedCornerShape(31.dp)
+                    .height(YumerinChatTokens.HeaderHeight),
+                shape = RoundedCornerShape(YumerinChatTokens.HeaderShapeRadius)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 11.dp),
+                        .padding(horizontal = YumerinChatTokens.HeaderInsetHorizontal),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(9.dp)
+                    horizontalArrangement = Arrangement.spacedBy(YumerinChatTokens.HeaderAvatarGap)
                 ) {
                     Avatar(
                         text = (group?.name ?: character?.name ?: conversationTitle).take(1).ifBlank { "聊" },
@@ -215,11 +218,11 @@ internal fun ChatDetailPage(
                             character != null -> "查看${character.name}详情"
                             else -> "聊天头像"
                         },
-                        size = 40.dp
+                        size = YumerinChatTokens.HeaderAvatar
                     )
                     Column(
                         modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(1.dp)
+                        verticalArrangement = Arrangement.spacedBy(YumerinChatTokens.HeaderTitleGap)
                     ) {
                         Text(
                             conversationTitle,
@@ -251,12 +254,12 @@ internal fun ChatDetailPage(
                     .layerBackdrop(chatBackdrop)
                     .verticalScroll(messageScrollState)
                     .padding(
-                        start = 16.dp,
-                        end = 16.dp,
-                        top = 10.dp,
+                        start = YumerinSpacing.PageHorizontal,
+                        end = YumerinSpacing.PageHorizontal,
+                        top = YumerinSpacing.FormField,
                         bottom = composerBottomPadding
                     ),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(YumerinChatTokens.MessageGap)
             ) {
                 messages.forEach { message ->
                     val isMine = message.senderType == MessageSenderType.USER
@@ -308,8 +311,8 @@ internal fun ChatDetailPage(
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 20.dp),
-                        shape = RoundedCornerShape(20.dp),
+                            .padding(top = YumerinSpacing.LargeInset),
+                        shape = RoundedCornerShape(YumerinShape.CardRadius),
                         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
                         border = androidx.compose.foundation.BorderStroke(
                             1.dp,
@@ -317,8 +320,8 @@ internal fun ChatDetailPage(
                         )
                     ) {
                         Column(
-                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(5.dp)
+                            modifier = Modifier.padding(horizontal = YumerinSpacing.CardInset, vertical = YumerinSpacing.CardVertical),
+                            verticalArrangement = Arrangement.spacedBy(YumerinChatTokens.EmptyStateGap)
                         ) {
                             Text("开始对话", style = MaterialTheme.typography.titleMedium)
                             Text(
@@ -335,20 +338,20 @@ internal fun ChatDetailPage(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .padding(horizontal = YumerinSpacing.Field, vertical = YumerinSpacing.Item)
             ) {
                 MiuixGlassSurface(
                     modifier = Modifier
                         .fillMaxWidth()
                         .onSizeChanged { composerSurfaceHeightPx = it.height },
-                    shape = RoundedCornerShape(28.dp),
+                    shape = RoundedCornerShape(YumerinChatTokens.ComposerShapeRadius),
                     backdrop = chatBackdrop
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 9.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                        .padding(horizontal = YumerinChatTokens.ComposerInsetHorizontal, vertical = YumerinChatTokens.ComposerInsetVertical),
+                        verticalArrangement = Arrangement.spacedBy(YumerinChatTokens.ComposerItemGap)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -414,7 +417,7 @@ internal fun ChatDetailPage(
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.Bottom,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Item)
                         ) {
                             MiuixTextField(
                                 value = draft,
@@ -422,7 +425,7 @@ internal fun ChatDetailPage(
                                 modifier = Modifier.weight(1f),
                                 label = "输入消息",
                                 useLabelAsPlaceholder = true,
-                                cornerRadius = 18.dp,
+                                cornerRadius = YumerinChatTokens.ComposerFieldRadius,
                                 minLines = 1,
                                 maxLines = 4,
                                 colors = MiuixTextFieldDefaults.textFieldColors(
@@ -482,9 +485,19 @@ private fun MessageBubble(
 ) {
     val isSystem = message.senderType == MessageSenderType.SYSTEM
     val bubbleShape = when {
-        isSystem -> RoundedCornerShape(16.dp)
-        isMine -> RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 4.dp)
-        else -> RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 4.dp, bottomEnd = 20.dp)
+        isSystem -> RoundedCornerShape(YumerinChatTokens.SystemBubbleRadius)
+        isMine -> RoundedCornerShape(
+            topStart = YumerinChatTokens.BubbleRadius,
+            topEnd = YumerinChatTokens.BubbleRadius,
+            bottomStart = YumerinChatTokens.BubbleRadius,
+            bottomEnd = YumerinChatTokens.BubbleTailRadius
+        )
+        else -> RoundedCornerShape(
+            topStart = YumerinChatTokens.BubbleRadius,
+            topEnd = YumerinChatTokens.BubbleRadius,
+            bottomStart = YumerinChatTokens.BubbleTailRadius,
+            bottomEnd = YumerinChatTokens.BubbleRadius
+        )
     }
     val bubbleColor = when {
         isSystem -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
@@ -514,7 +527,7 @@ private fun MessageBubble(
                     onClick = onAvatarClick,
                     contentDescription = "查看${message.senderName}详情"
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(YumerinSpacing.Item))
             }
             Column(
                 modifier = if (isSystem) {
@@ -522,7 +535,7 @@ private fun MessageBubble(
                 } else {
                     Modifier.widthIn(max = maxBubbleWidth)
                 },
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Compact)
             ) {
                 Surface(
                     modifier = if (isSystem) Modifier.fillMaxWidth() else Modifier,
@@ -539,8 +552,11 @@ private fun MessageBubble(
                     )
                 ) {
                     Column(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                        modifier = Modifier.padding(
+                            horizontal = YumerinChatTokens.BubbleInsetHorizontal,
+                            vertical = YumerinChatTokens.BubbleInsetVertical
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(YumerinChatTokens.BubbleMetaGap)
                     ) {
                         if (!isMine && !isSystem) {
                             Text(
@@ -569,7 +585,7 @@ private fun MessageBubble(
                             Text("可重试此回复", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
                         }
                         if (onRetry != null || onRetryUser != null || onRecall != null) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(YumerinChatTokens.BubbleActionGap)) {
                                 onRetry?.let { TextButton(onClick = it) { Text("重试") } }
                                 onRetryUser?.let { TextButton(onClick = it) { Text("重试发送") } }
                                 onRecall?.let { TextButton(onClick = it) { Text("查看召回记忆") } }
@@ -579,7 +595,7 @@ private fun MessageBubble(
                 }
             }
             if (isMine && !isSystem) {
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(YumerinSpacing.Item))
                 Avatar(
                     text = avatarText,
                     uri = avatarUri,

@@ -1,7 +1,8 @@
 package com.lhy.yumerin
 
+import com.lhy.yumerin.designsystem.YumerinSpacing
+
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -11,7 +12,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.unit.dp
 import com.lhy.yumerin.core.model.AppSettings
 import com.lhy.yumerin.core.model.ContextLengthMode
 import com.lhy.yumerin.core.model.GenerationParameters
@@ -19,12 +19,12 @@ import com.lhy.yumerin.core.model.ModelProfile
 import com.lhy.yumerin.core.model.ModelProviderKind
 import com.lhy.yumerin.core.model.newEntityId
 import com.lhy.yumerin.designsystem.OverlayDropdownMenu
+import com.lhy.yumerin.designsystem.YumerinButton as MiuixButton
 import com.lhy.yumerin.domain.AppGraph
 import com.lhy.yumerin.domain.repository.ModelConfigurationTestResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.basic.Button as MiuixButton
-import top.yukonga.miuix.kmp.basic.ButtonDefaults as MiuixButtonDefaults
+import top.yukonga.miuix.kmp.basic.HorizontalDivider as HorizontalDivider
 import top.yukonga.miuix.kmp.basic.DropdownEntry as MiuixDropdownEntry
 import top.yukonga.miuix.kmp.basic.DropdownItem as MiuixDropdownItem
 import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
@@ -53,7 +53,7 @@ internal fun ModelsPage(
         PageColumn {
             Row(
                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Field)
             ) {
                 MiuixBackButton(onClick = onBack)
                 MiuixText("模型", modifier = Modifier.weight(1f), style = MiuixTheme.textStyles.title2)
@@ -106,8 +106,8 @@ private fun RemoteModelsOverview(
 ) {
     MiuixCardSurface(Modifier.fillMaxWidth()) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.fillMaxWidth().padding(YumerinSpacing.CardInset),
+            verticalArrangement = Arrangement.spacedBy(YumerinSpacing.FormField)
         ) {
             MiuixText("远端模型", style = MiuixTheme.textStyles.title2)
             MiuixText(
@@ -119,10 +119,7 @@ private fun RemoteModelsOverview(
                 MiuixText("还没有远端模型配置。添加的第一个模型会设为全局默认。")
                 MiuixButton(
                     onClick = onAddModel,
-                    modifier = Modifier.fillMaxWidth(),
-                    minWidth = 0.dp,
-                    minHeight = 48.dp,
-                    colors = MiuixButtonDefaults.buttonColorsPrimary()
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     MiuixText("添加远端模型", style = MiuixTheme.textStyles.button)
                 }
@@ -152,7 +149,7 @@ private fun RemoteModelsOverview(
                 HorizontalDivider()
                 MiuixText("已配置的模型", style = MiuixTheme.textStyles.title3)
                 profiles.forEach { profile ->
-                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(YumerinSpacing.CompactRow)) {
                         MiuixText(profile.displayName, style = MiuixTheme.textStyles.subtitle)
                         MiuixText(
                             "${profile.providerName} · ${profile.modelId}",
@@ -171,7 +168,7 @@ private fun RemoteModelsOverview(
     MiuixCardSurface(Modifier.fillMaxWidth()) {
         MiuixText(
             text = "角色可单独指定模型；未指定时跟随全局默认。",
-            modifier = Modifier.padding(18.dp),
+            modifier = Modifier.padding(YumerinSpacing.CardInset),
             color = MiuixTheme.colorScheme.onSurfaceVariantActions
         )
     }
@@ -219,8 +216,8 @@ private fun RemoteModelProfileForm(
 
     MiuixCardSurface(Modifier.fillMaxWidth()) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.fillMaxWidth().padding(YumerinSpacing.CardInset),
+            verticalArrangement = Arrangement.spacedBy(YumerinSpacing.FormField)
         ) {
             MiuixText("新增远端模型", style = MiuixTheme.textStyles.title2)
             MiuixText("先填写连接信息。测试连接可选；保存后可用于全局默认或角色单独指定。")
@@ -286,7 +283,7 @@ private fun RemoteModelProfileForm(
                 MiuixTextField(stopSequences, { stopSequences = it }, Modifier.fillMaxWidth(), label = "Stop sequences（逗号分隔）")
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.FormField)) {
                 MiuixTextButton(
                     text = if (modelTestRunning) "测试中" else "测试连接",
                     onClick = {
@@ -361,10 +358,7 @@ private fun RemoteModelProfileForm(
                         }
                     },
                     modifier = Modifier.weight(1f),
-                    enabled = canSubmit,
-                    minWidth = 0.dp,
-                    minHeight = 48.dp,
-                    colors = MiuixButtonDefaults.buttonColorsPrimary()
+                    enabled = canSubmit
                 ) {
                     MiuixText(
                         if (shouldSetAsDefault) "保存并设为默认" else "保存模型",

@@ -1,5 +1,7 @@
 package com.lhy.yumerin
 
+import com.lhy.yumerin.designsystem.YumerinSpacing
+
 import androidx.compose.animation.*
 import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection
 import androidx.compose.foundation.*
@@ -23,6 +25,11 @@ import androidx.compose.ui.unit.dp
 import com.lhy.yumerin.core.model.*
 import com.lhy.yumerin.data.memory.*
 import com.lhy.yumerin.designsystem.*
+import com.lhy.yumerin.designsystem.YumerinAlertDialog as AlertDialog
+import com.lhy.yumerin.designsystem.YumerinButton as Button
+import com.lhy.yumerin.designsystem.YumerinOutlinedTextField as OutlinedTextField
+import com.lhy.yumerin.designsystem.YumerinTextButton as TextButton
+import top.yukonga.miuix.kmp.basic.Switch as Switch
 import com.lhy.yumerin.domain.*
 import com.lhy.yumerin.domain.memory.*
 import com.lhy.yumerin.domain.repository.*
@@ -70,19 +77,19 @@ internal fun SchedulesPage(
     PageColumn {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Field)
         ) {
             MiuixBackButton(onClick = onBack)
             Text("计划与目标", style = MaterialTheme.typography.headlineLarge)
         }
         Text("周期计划需要开启全局和角色主动开关；一次性互动需要开启全局开关。明确委托的目标独立运行。静默时段或关闭通知权限只会隐藏提醒，不删除聊天消息。")
         MiuixCardSurface(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.padding(YumerinSpacing.CardInset), verticalArrangement = Arrangement.spacedBy(YumerinSpacing.FormField)) {
                 Text("新建计划", style = MaterialTheme.typography.titleLarge)
-                OutlinedTextField(title, { title = it }, Modifier.fillMaxWidth(), label = { Text("计划名称") }, singleLine = true)
-                OutlinedTextField(prompt, { prompt = it }, Modifier.fillMaxWidth(), label = { Text("互动提示") })
-                OutlinedTextField(hour, { hour = it }, Modifier.fillMaxWidth(), label = { Text("小时（0-23）") }, singleLine = true)
-                OutlinedTextField(minute, { minute = it }, Modifier.fillMaxWidth(), label = { Text("分钟（0-59）") }, singleLine = true)
+                OutlinedTextField(title, { title = it }, Modifier.fillMaxWidth(), label = "计划名称", singleLine = true)
+                OutlinedTextField(prompt, { prompt = it }, Modifier.fillMaxWidth(), label = "互动提示")
+                OutlinedTextField(hour, { hour = it }, Modifier.fillMaxWidth(), label = "小时（0-23）", singleLine = true)
+                OutlinedTextField(minute, { minute = it }, Modifier.fillMaxWidth(), label = "分钟（0-59）", singleLine = true)
                 val directChats = chats.filter { it.kind == ChatKind.DIRECT && it.characterId == characterId }
                 if (characters.isNotEmpty()) {
                     OverlayDropdownMenu(
@@ -153,16 +160,16 @@ internal fun SchedulesPage(
             }
         }
         MiuixCardSurface(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.padding(YumerinSpacing.CardInset), verticalArrangement = Arrangement.spacedBy(YumerinSpacing.FormField)) {
                 Text("一次性目标", style = MaterialTheme.typography.titleLarge)
                 Text("安排角色在指定延迟后主动完成一次轻量互动。目标只生成普通聊天消息，不会执行外部操作。")
-                OutlinedTextField(goalTitle, { goalTitle = it }, Modifier.fillMaxWidth(), label = { Text("目标名称") }, singleLine = true)
-                OutlinedTextField(goalPrompt, { goalPrompt = it }, Modifier.fillMaxWidth(), label = { Text("到期时的互动内容") })
+                OutlinedTextField(goalTitle, { goalTitle = it }, Modifier.fillMaxWidth(), label = "目标名称", singleLine = true)
+                OutlinedTextField(goalPrompt, { goalPrompt = it }, Modifier.fillMaxWidth(), label = "到期时的互动内容")
                 OutlinedTextField(
                     goalDelayMinutes,
                     { goalDelayMinutes = it.filter(Char::isDigit).take(6) },
                     Modifier.fillMaxWidth(),
-                    label = { Text("多少分钟后执行（1 到 525600）") },
+                    label = "多少分钟后执行（1 到 525600）",
                     singleLine = true
                 )
                 goalFeedback?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
@@ -204,7 +211,7 @@ internal fun SchedulesPage(
         }
         agentGoals.filter { it.status != AgentGoalStatus.CANCELLED }.forEach { goal ->
             MiuixCardSurface(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(Modifier.padding(YumerinSpacing.CardVertical), verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Dense)) {
                     Text(goal.title, style = MaterialTheme.typography.titleMedium)
                     val remainingMinutes = ((goal.dueAt - nowMillis()).coerceAtLeast(0L) / 60_000L)
                     Text(
@@ -222,12 +229,12 @@ internal fun SchedulesPage(
             }
         }
         MiuixCardSurface(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.padding(YumerinSpacing.CardInset), verticalArrangement = Arrangement.spacedBy(YumerinSpacing.FormField)) {
                 Text("委托目标", style = MaterialTheme.typography.titleLarge)
                 Text("描述你希望达成的结果。Agent 会把它拆成最多 6 步，后台逐步处理；需要你补充信息时会暂停等待。明确委托的目标不受全局主动消息开关限制，后台执行尽力而为；当前可用能力以应用内已接入的模块为限。")
-                OutlinedTextField(delegatedTitle, { delegatedTitle = it.take(80) }, Modifier.fillMaxWidth(), label = { Text("目标名称") }, singleLine = true)
-                OutlinedTextField(delegatedOutcome, { delegatedOutcome = it.take(1_000) }, Modifier.fillMaxWidth(), label = { Text("希望达成的结果") })
-                OutlinedTextField(delegatedConstraints, { delegatedConstraints = it.take(1_500) }, Modifier.fillMaxWidth(), label = { Text("约束或偏好（可选）") })
+                OutlinedTextField(delegatedTitle, { delegatedTitle = it.take(80) }, Modifier.fillMaxWidth(), label = "目标名称", singleLine = true)
+                OutlinedTextField(delegatedOutcome, { delegatedOutcome = it.take(1_000) }, Modifier.fillMaxWidth(), label = "希望达成的结果")
+                OutlinedTextField(delegatedConstraints, { delegatedConstraints = it.take(1_500) }, Modifier.fillMaxWidth(), label = "约束或偏好（可选）")
                 delegatedFeedback?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
                 Button(
                     onClick = {
@@ -264,7 +271,7 @@ internal fun SchedulesPage(
         }
         delegatedGoals.filter { it.status != DelegatedAgentGoalStatus.CANCELLED }.forEach { goal ->
             MiuixCardSurface(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                Column(Modifier.padding(YumerinSpacing.CardVertical), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Text(goal.title, style = MaterialTheme.typography.titleMedium)
                     Text("${delegatedGoalStatusLabel(goal.status)} · ${goal.outcome}")
                     goal.latestSummary?.takeIf(String::isNotBlank)?.let { Text(it) }
@@ -279,11 +286,11 @@ internal fun SchedulesPage(
                             value = answer,
                             onValueChange = { value -> delegatedAnswers = delegatedAnswers + (goal.id to value.take(1_000)) },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text("补充信息") }
+                            label = "补充信息"
                         )
                     }
                     goal.failureReason?.let { Text("未完成：$it") }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Item)) {
                         when (goal.status) {
                             DelegatedAgentGoalStatus.QUEUED,
                             DelegatedAgentGoalStatus.RUNNING -> TextButton(onClick = { scope.launch { graph.useCases.pauseDelegatedAgentGoal(goal.id) } }) { Text("暂停") }
@@ -313,7 +320,7 @@ internal fun SchedulesPage(
         }
         schedules.forEach { schedule ->
             MiuixCardSurface(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(Modifier.padding(YumerinSpacing.CardVertical), verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Dense)) {
                     Text(schedule.title, style = MaterialTheme.typography.titleMedium)
                     Text("每天 ${schedule.hour.pad2()}:${schedule.minute.pad2()} · ${schedule.prompt}")
                     Row(verticalAlignment = Alignment.CenterVertically) {

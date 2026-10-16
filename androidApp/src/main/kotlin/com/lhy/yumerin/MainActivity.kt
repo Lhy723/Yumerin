@@ -1,12 +1,15 @@
 package com.lhy.yumerin
 
 import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.graphics.BitmapFactory
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.PickVisualMediaRequest
@@ -91,6 +94,16 @@ class MainActivity : ComponentActivity(), KoinComponent {
                 appIcon = appIcon,
                 initialChatId = initialChatId,
                 skipAdultConfirmationForDebug = BuildConfig.SKIP_ADULT_CONFIRMATION,
+                appVersionName = BuildConfig.VERSION_NAME,
+                onCheckForUpdates = { fetchLatestAppRelease() },
+                onOpenExternalUrl = { url ->
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    try {
+                        startActivity(intent)
+                    } catch (_: ActivityNotFoundException) {
+                        Toast.makeText(this, "没有可打开链接的应用。", Toast.LENGTH_SHORT).show()
+                    }
+                },
                 onBackgroundPermissionRequest = { onGranted ->
                     if (
                         Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&

@@ -3,6 +3,7 @@ package com.lhy.yumerin
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import com.lhy.yumerin.core.model.ThemeColor
+import com.lhy.yumerin.core.model.ComponentMaterial
 import top.yukonga.miuix.kmp.theme.Colors
 import top.yukonga.miuix.kmp.theme.darkColorScheme
 import top.yukonga.miuix.kmp.theme.lightColorScheme
@@ -21,12 +22,31 @@ internal fun ThemeColor.accentColor(): Color = when (this) {
     ThemeColor.ORANGE -> Color(0xFFA75C15)
 }
 
-internal fun ThemeColor.colorSchemes(): ThemeColorSchemes {
+internal fun ThemeColor.colorSchemes(material: ComponentMaterial): ThemeColorSchemes {
     val accent = accentColor()
     val lightAccentContainer = lerp(Color.White, accent, 0.12f)
     val darkAccent = lerp(accent, Color.White, 0.42f)
     val darkAccentContainer = lerp(Color(0xFF242424), accent, 0.38f)
     val darkTextOnAccent = Color(0xFF171717)
+
+    fun Colors.withMaterial(isDark: Boolean): Colors = when (material) {
+        ComponentMaterial.STANDARD -> this
+        ComponentMaterial.GLASS -> copy(
+            secondaryVariant = secondaryVariant.copy(alpha = 0.88f),
+            primaryContainer = primaryContainer.copy(alpha = 0.9f),
+            secondaryContainer = secondaryContainer.copy(alpha = 0.9f),
+            secondaryContainerVariant = secondaryContainerVariant.copy(alpha = 0.9f),
+            tertiaryContainer = tertiaryContainer.copy(alpha = 0.9f),
+            background = if (isDark) Color(0xFF17191D) else Color(0xFFE8EBF2),
+            surface = if (isDark) Color(0xFF202228) else Color(0xFFF0F2F7),
+            surfaceVariant = (if (isDark) Color(0xFF3C3F47) else Color.White).copy(alpha = 0.82f),
+            surfaceContainer = (if (isDark) Color(0xFF353840) else Color.White).copy(alpha = 0.78f),
+            surfaceContainerHigh = (if (isDark) Color(0xFF3B3E47) else Color.White).copy(alpha = 0.84f),
+            surfaceContainerHighest = (if (isDark) Color(0xFF42454E) else Color.White).copy(alpha = 0.9f),
+            outline = outline.copy(alpha = 0.76f),
+            dividerLine = dividerLine.copy(alpha = 0.72f)
+        )
+    }
 
     return ThemeColorSchemes(
         light = lightColorScheme().copy(
@@ -43,7 +63,7 @@ internal fun ThemeColor.colorSchemes(): ThemeColorSchemes {
             onPrimaryContainer = accent,
             tertiaryContainer = lightAccentContainer,
             onTertiaryContainer = accent
-        ),
+        ).withMaterial(isDark = false),
         dark = darkColorScheme().copy(
             primary = darkAccent,
             onPrimary = darkTextOnAccent,
@@ -58,7 +78,7 @@ internal fun ThemeColor.colorSchemes(): ThemeColorSchemes {
             onPrimaryContainer = darkAccent,
             tertiaryContainer = darkAccentContainer,
             onTertiaryContainer = darkAccent
-        )
+        ).withMaterial(isDark = true)
     )
 }
 

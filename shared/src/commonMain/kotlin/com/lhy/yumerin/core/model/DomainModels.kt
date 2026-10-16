@@ -20,6 +20,11 @@ enum class ThemeColor {
     ORANGE
 }
 
+enum class ComponentMaterial {
+    STANDARD,
+    GLASS
+}
+
 enum class ChatKind {
     DIRECT,
     GROUP
@@ -283,7 +288,8 @@ data class AppSettings(
     val reducedMotionEnabled: Boolean = false,
     val userName: String = "Yumerin User",
     val userAvatarUri: String? = null,
-    val themeColor: ThemeColor = ThemeColor.BLUE
+    val themeColor: ThemeColor = ThemeColor.BLUE,
+    val componentMaterial: ComponentMaterial = ComponentMaterial.STANDARD
 )
 
 data class GroupMembershipWindow(

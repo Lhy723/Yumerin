@@ -1,5 +1,7 @@
 # Compact single-choice conventions
 
+These settings-specific conventions extend the project-wide [UI design-system guidelines](ui-design-system-guidelines.md). Follow the shared Miuix, material, layout, reuse, and user-exception rules here as well.
+
 Use these conventions for settings and other single-choice controls throughout Yumerin:
 
 - A single-choice item is a compact, Nexio-style anchored popup. Its row shows the current value on the right with an up/down chevron. Selecting an option updates the displayed value and closes the popup. Standalone settings save immediately; edit forms keep the selection in their draft until the form is saved.
