@@ -86,21 +86,28 @@ class RoomAppGraph(
         val characterDao = database.characterDao()
         val chatDao = database.chatThreadDao()
         val messageDao = database.chatMessageDao()
-        val seededCharacter = DefaultCompanionSeed.character
+        val seed = DefaultCompanionSeed.load()
+        val seededCharacter = seed.character
         val existingCharacter = characterDao.findById(seededCharacter.id)
         if (existingCharacter == null) {
             characterDao.upsert(seededCharacter.toEntity())
-        } else if (existingCharacter.avatarUri == null && seededCharacter.avatarUri != null) {
-            characterDao.upsert(existingCharacter.copy(avatarUri = seededCharacter.avatarUri))
+        } else {
+            val previousProfile = existingCharacter.toDomain()
+            val refreshedProfile = seed.migrateExistingProfile(previousProfile)
+            var updatedCharacter = if (refreshedProfile != previousProfile) refreshedProfile.toEntity() else existingCharacter
+            if (updatedCharacter.avatarUri == null && seededCharacter.avatarUri != null) {
+                updatedCharacter = updatedCharacter.copy(avatarUri = seededCharacter.avatarUri)
+            }
+            if (updatedCharacter != existingCharacter) characterDao.upsert(updatedCharacter)
         }
-        val seededChat = DefaultCompanionSeed.chat
+        val seededChat = seed.chat
         val existingChat = chatDao.findById(seededChat.id)
         if (existingChat == null) {
             chatDao.upsert(seededChat.toEntity())
-            messageDao.upsert(DefaultCompanionSeed.welcomeMessage.toEntity())
+            messageDao.upsert(seed.welcomeMessage.toEntity())
         } else if (existingChat.avatarUri == null && seededCharacter.avatarUri != null) {
             chatDao.upsert(existingChat.copy(avatarUri = seededCharacter.avatarUri))
-            messageDao.findById(DefaultCompanionSeed.welcomeMessage.id)?.let { welcomeMessage ->
+            messageDao.findById(seed.welcomeMessage.id)?.let { welcomeMessage ->
                 if (welcomeMessage.senderAvatarUri == null) {
                     messageDao.upsert(welcomeMessage.copy(senderAvatarUri = seededCharacter.avatarUri))
                 }

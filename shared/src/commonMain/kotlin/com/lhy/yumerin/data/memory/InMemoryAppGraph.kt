@@ -99,66 +99,14 @@ class InMemoryAppGraph : AppGraph {
     override suspend fun ensureSeedData() {
         seedMutex.withLock {
             if (seeded) return
-            val companion = DefaultCompanionSeed.character
-            characters.saveCharacter(companion)
-            chats.saveChat(DefaultCompanionSeed.chat)
-            chats.appendMessage(DefaultCompanionSeed.welcomeMessage)
+            val seed = DefaultCompanionSeed.load()
+            characters.saveCharacter(seed.character)
+            chats.saveChat(seed.chat)
+            chats.appendMessage(seed.welcomeMessage)
             settings.saveSettings(AppSettings())
             seeded = true
         }
     }
-}
-
-internal object DefaultCompanionSeed {
-    private const val characterId = "character-default-yuna"
-    private const val chatId = "chat-default-yuna"
-
-    val character = CharacterProfile(
-        id = characterId,
-        name = "由奈",
-        avatarUri = defaultCompanionAvatarUri,
-        relationshipFraming = "温柔、亲密、尊重边界的虚拟伴侣",
-        setting = "住在雨夜霓虹城市里的二次元少女",
-        description = "一个会认真听你说话，也会在你需要时陪你安静一会儿的默认伴侣。",
-        personality = "温柔、敏锐、略带俏皮，重视你的感受和选择。",
-        tone = "自然、亲近、简短，不用过度夸张的语气。",
-        backstory = "她喜欢收集城市里细小的光，也相信每个普通日子都值得被记住。",
-        interactionStyle = "优先回应你的情绪和意图，必要时提出一个轻量的问题。",
-        modelProfileId = null,
-        archived = false,
-        createdAt = 0L,
-        updatedAt = 0L
-    )
-
-    val chat = ChatThread(
-        id = chatId,
-        kind = com.lhy.yumerin.core.model.ChatKind.DIRECT,
-        title = character.name,
-        characterId = character.id,
-        groupId = null,
-        avatarUri = character.avatarUri,
-        lastMessagePreview = "嗨，我是由奈。今天想从哪里开始？",
-        lastActivityAt = 0L,
-        unreadCount = 0,
-        pinned = true,
-        muted = false,
-        shortTermSummary = "刚刚开始认识彼此。",
-        summaryMaintenanceMode = com.lhy.yumerin.core.model.SummaryMaintenanceMode.AUTO
-    )
-
-    val welcomeMessage = ChatMessage(
-        id = "message-default-welcome",
-        chatId = chatId,
-        senderId = character.id,
-        senderType = com.lhy.yumerin.core.model.MessageSenderType.CHARACTER,
-        senderName = character.name,
-        senderAvatarUri = character.avatarUri,
-        text = "嗨，我是由奈。今天想从哪里开始？",
-        timestamp = 0L,
-        type = com.lhy.yumerin.core.model.MessageType.TEXT,
-        isProactive = false,
-        isRead = true
-    )
 }
 
 private class InMemoryCharacterRepository : CharacterRepository {

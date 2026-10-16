@@ -68,8 +68,11 @@ object ContextAssembler {
         request.character?.let {
             append("Character name: ${it.name}. ")
             append("Relationship: ${it.relationshipFraming}. ")
+            it.setting.takeIf(String::isNotBlank)?.let { setting -> append("Setting: $setting. ") }
+            it.description.takeIf(String::isNotBlank)?.let { description -> append("Description: $description. ") }
             append("Personality: ${it.personality}. ")
             append("Tone: ${it.tone}. ")
+            it.backstory.takeIf(String::isNotBlank)?.let { backstory -> append("Backstory: $backstory. ") }
             append("Interaction style: ${it.interactionStyle}. ")
         }
         if (request.chat.shortTermSummary.isNotBlank()) append("Recent chat summary: ${request.chat.shortTermSummary}. ")
@@ -78,7 +81,7 @@ object ContextAssembler {
             append("Relationship continuity: ${context.relationshipContinuity}. ")
             append("Current-message affect signal (temporary, uncertain context): ${context.userAffect}. ")
             append("Response guidance: ${context.responseGuidance} ")
-            append("Keep the character's established personality and boundaries stable; do not present a transient affect signal as a diagnosis or permanent fact about the user. ")
+            append("Keep the character's established personality and relationship continuity stable; do not present a transient affect signal as a diagnosis or permanent fact about the user. ")
         }
         request.proactivePrompt?.let {
             append("You are initiating an ordinary chat message. Use the following user-approved schedule intent: $it. ")
