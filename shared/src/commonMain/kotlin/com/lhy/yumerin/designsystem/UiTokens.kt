@@ -133,7 +133,7 @@ object YumerinChatTokens {
     val BubbleMetaGap = 2.dp
     val BubbleActionGap = 2.dp
     val EmptyStateGap = 5.dp
-    val ComposerBottomClearance = 28.dp
+    val ComposerBottomClearance = 16.dp
 }
 
 /** Geometry for the chat-list selector, floating action, and row alignment. */

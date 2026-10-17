@@ -4,12 +4,8 @@ import com.lhy.yumerin.core.model.*
 import com.lhy.yumerin.domain.agent.AgentRuntime
 import com.lhy.yumerin.domain.agent.CharacterMemoryRetriever
 import com.lhy.yumerin.domain.agent.CharacterStateCoordinator
-import com.lhy.yumerin.domain.memory.MemoryPolicy
 import com.lhy.yumerin.domain.repository.*
-import com.lhy.yumerin.domain.safety.SafetyPolicy
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
-import kotlin.time.Clock
 
 sealed interface ProactiveMessageResult {
     data object Skipped : ProactiveMessageResult

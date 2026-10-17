@@ -3,12 +3,9 @@ package com.lhy.yumerin
 import com.lhy.yumerin.designsystem.YumerinSpacing
 
 import androidx.compose.animation.*
-import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.*
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
@@ -19,7 +16,6 @@ import androidx.compose.ui.layout.*
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.*
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.lhy.yumerin.core.model.*
 import com.lhy.yumerin.data.memory.*
@@ -30,7 +26,6 @@ import com.lhy.yumerin.domain.repository.*
 import com.lhy.yumerin.domain.usecase.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import kotlin.time.Clock
 import top.yukonga.miuix.kmp.basic.ButtonDefaults as MiuixButtonDefaults
 import top.yukonga.miuix.kmp.basic.DropdownEntry as MiuixDropdownEntry
 import top.yukonga.miuix.kmp.basic.DropdownItem as MiuixDropdownItem
@@ -43,7 +38,6 @@ import top.yukonga.miuix.kmp.basic.TextButton as MiuixTextButton
 import top.yukonga.miuix.kmp.basic.TextField as MiuixTextField
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.preference.ArrowPreference as MiuixArrowPreference
-import top.yukonga.miuix.kmp.preference.SwitchPreference as MiuixSwitchPreference
 import top.yukonga.miuix.kmp.overlay.OverlayDialog as MiuixOverlayDialog
 import kotlin.math.roundToInt
 

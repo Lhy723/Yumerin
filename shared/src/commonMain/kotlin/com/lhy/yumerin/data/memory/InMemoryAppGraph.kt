@@ -17,7 +17,6 @@ import com.lhy.yumerin.core.model.GroupMembershipWindow
 import com.lhy.yumerin.core.model.LocalModelArtifact
 import com.lhy.yumerin.core.model.MemoryEntry
 import com.lhy.yumerin.core.model.ModelProfile
-import com.lhy.yumerin.core.model.newEntityId
 import com.lhy.yumerin.domain.AppGraph
 import com.lhy.yumerin.domain.background.BackgroundCompanionController
 import com.lhy.yumerin.domain.background.AgentGoalScheduler
@@ -42,7 +41,6 @@ import com.lhy.yumerin.domain.repository.ImportPreview
 import com.lhy.yumerin.domain.repository.ImportConflictPolicy
 import com.lhy.yumerin.domain.repository.LocalModelGateway
 import com.lhy.yumerin.domain.repository.PortableDataManager
-import com.lhy.yumerin.domain.repository.PortableDataCounts
 import com.lhy.yumerin.domain.usecase.AppUseCases
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow

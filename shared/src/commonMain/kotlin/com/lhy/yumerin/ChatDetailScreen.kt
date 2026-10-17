@@ -1,7 +1,6 @@
 package com.lhy.yumerin
 
 import androidx.compose.animation.*
-import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -19,7 +18,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.*
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.lhy.yumerin.core.model.*
 import com.lhy.yumerin.data.memory.*
@@ -41,7 +39,6 @@ import top.yukonga.miuix.kmp.basic.DropdownEntry as MiuixDropdownEntry
 import top.yukonga.miuix.kmp.basic.DropdownItem as MiuixDropdownItem
 import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
 import top.yukonga.miuix.kmp.basic.Text as MiuixText
-import kotlin.time.Clock
 
 @Composable
 internal fun ChatDetailPage(
@@ -224,13 +221,13 @@ internal fun ChatDetailPage(
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(YumerinChatTokens.HeaderTitleGap)
                     ) {
-                        Text(
+                        MiuixText(
                             conversationTitle,
                             style = MaterialTheme.typography.titleMedium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        Text(
+                        MiuixText(
                             conversationSubtitle,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -323,8 +320,8 @@ internal fun ChatDetailPage(
                             modifier = Modifier.padding(horizontal = YumerinSpacing.CardInset, vertical = YumerinSpacing.CardVertical),
                             verticalArrangement = Arrangement.spacedBy(YumerinChatTokens.EmptyStateGap)
                         ) {
-                            Text("开始对话", style = MaterialTheme.typography.titleMedium)
-                            Text(
+                            MiuixText("开始对话", style = MaterialTheme.typography.titleMedium)
+                            MiuixText(
                                 "发送第一条消息，让对话从这里开始。",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -449,23 +446,23 @@ internal fun ChatDetailPage(
     if (showModelGate) {
         AlertDialog(
             onDismissRequest = { showModelGate = false },
-            title = { Text("还没有选择模型") },
-            text = { Text("先在模型页添加一个远端或本地模型，再开始对话。刚才的消息已保留在本地并标记为失败，不会在未配置时调用模型。") },
+            title = { MiuixText("还没有选择模型") },
+            text = { MiuixText("先在模型页添加一个远端或本地模型，再开始对话。刚才的消息已保留在本地并标记为失败，不会在未配置时调用模型。") },
             confirmButton = {
                 TextButton(onClick = {
                     showModelGate = false
                     onOpenModels()
-                }) { Text("去设置模型") }
+                }) { MiuixText("去设置模型") }
             },
-            dismissButton = { TextButton(onClick = { showModelGate = false }) { Text("稍后") } }
+            dismissButton = { TextButton(onClick = { showModelGate = false }) { MiuixText("稍后") } }
         )
     }
     recallText?.let { text ->
         AlertDialog(
             onDismissRequest = { recallText = null },
-            title = { Text("本次回复使用的记忆") },
-            text = { Text(text) },
-            confirmButton = { TextButton(onClick = { recallText = null }) { Text("关闭") } }
+            title = { MiuixText("本次回复使用的记忆") },
+            text = { MiuixText(text) },
+            confirmButton = { TextButton(onClick = { recallText = null }) { MiuixText("关闭") } }
         )
     }
     }
@@ -559,14 +556,14 @@ private fun MessageBubble(
                         verticalArrangement = Arrangement.spacedBy(YumerinChatTokens.BubbleMetaGap)
                     ) {
                         if (!isMine && !isSystem) {
-                            Text(
+                            MiuixText(
                                 message.senderName,
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
-                        Text(
-                            text = message.text.ifBlank {
+                        MiuixText(
+                            text = message.text.trim().ifBlank {
                                 when (message.responseState) {
                                     com.lhy.yumerin.core.model.AiResponseState.GENERATING -> "正在输入…"
                                     com.lhy.yumerin.core.model.AiResponseState.STOPPED -> "已停止生成"
@@ -576,19 +573,19 @@ private fun MessageBubble(
                             style = MaterialTheme.typography.bodyLarge
                         )
                         message.errorMessage?.let {
-                            Text("状态：$it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                            MiuixText("状态：$it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                         }
                         if (isMine && message.deliveryState != com.lhy.yumerin.core.model.MessageDeliveryState.SENT) {
-                            Text("消息尚未成功处理", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                            MiuixText("消息尚未成功处理", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
                         }
                         if (message.responseState == com.lhy.yumerin.core.model.AiResponseState.RETRYABLE) {
-                            Text("可重试此回复", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                            MiuixText("可重试此回复", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
                         }
                         if (onRetry != null || onRetryUser != null || onRecall != null) {
                             Row(horizontalArrangement = Arrangement.spacedBy(YumerinChatTokens.BubbleActionGap)) {
-                                onRetry?.let { TextButton(onClick = it) { Text("重试") } }
-                                onRetryUser?.let { TextButton(onClick = it) { Text("重试发送") } }
-                                onRecall?.let { TextButton(onClick = it) { Text("查看召回记忆") } }
+                                onRetry?.let { TextButton(onClick = it) { MiuixText("重试") } }
+                                onRetryUser?.let { TextButton(onClick = it) { MiuixText("重试发送") } }
+                                onRecall?.let { TextButton(onClick = it) { MiuixText("查看召回记忆") } }
                             }
                         }
                     }

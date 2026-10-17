@@ -3,12 +3,9 @@ package com.lhy.yumerin
 import com.lhy.yumerin.designsystem.YumerinSpacing
 
 import androidx.compose.animation.*
-import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.*
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
@@ -20,7 +17,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.*
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.lhy.yumerin.core.model.*
 import com.lhy.yumerin.data.memory.*
@@ -28,23 +24,18 @@ import com.lhy.yumerin.designsystem.*
 import com.lhy.yumerin.designsystem.YumerinButton as Button
 import com.lhy.yumerin.designsystem.YumerinOutlinedTextField as OutlinedTextField
 import com.lhy.yumerin.designsystem.YumerinTextButton as TextButton
-import top.yukonga.miuix.kmp.basic.HorizontalDivider as HorizontalDivider
 import com.lhy.yumerin.domain.*
 import com.lhy.yumerin.domain.memory.*
 import com.lhy.yumerin.domain.repository.*
 import com.lhy.yumerin.domain.usecase.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import kotlin.time.Clock
-import top.yukonga.miuix.kmp.basic.SmallTitle as MiuixSmallTitle
 
 @Composable
 internal fun ProfilePage(
     settings: AppSettings,
     onPickAvatar: ((onSelected: (String?) -> Unit) -> Unit),
     onSettingsChanged: (AppSettings) -> Unit,
-    onOpenSettings: () -> Unit,
-    onOpenAbout: () -> Unit,
     onOpenUserProfile: () -> Unit
 ) {
     val displayName = settings.userName.ifBlank { "Yumerin" }
@@ -74,7 +65,7 @@ internal fun ProfilePage(
             horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Item)
         ) {
             ProfileActionTile(
-                                icon = YumerinAddIcon,
+                icon = YumerinAddIcon,
                 title = "设置照片",
                 modifier = Modifier.weight(1f),
                 onClick = {
@@ -86,61 +77,13 @@ internal fun ProfilePage(
                 }
             )
             ProfileActionTile(
-                                icon = YumerinEditIcon,
+                icon = YumerinEditIcon,
                 title = "编辑资料",
                 modifier = Modifier.weight(1f),
                 onClick = onOpenUserProfile
             )
-            ProfileActionTile(
-                                icon = YumerinSettingsIcon,
-                title = "设置",
-                modifier = Modifier.weight(1f),
-                onClick = onOpenSettings
-            )
         }
 
-        MiuixSmallTitle(text = "个人信息")
-        MiuixCardSurface(Modifier.fillMaxWidth()) {
-            Column(Modifier.fillMaxWidth()) {
-                SettingRow(
-                    title = "账号",
-                    value = "头像和显示名称",
-                    onClick = onOpenUserProfile,
-                    description = "管理个人头像和显示名称"
-                )
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = YumerinSpacing.CardInset),
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
-                )
-                SettingRow(
-                    title = "头像",
-                    value = if (settings.userAvatarUri == null) "默认" else "已设置",
-                    description = "头像只用于 Yumerin 内的个人资料和消息显示"
-                )
-            }
-        }
-
-        MiuixSmallTitle(text = "应用信息")
-        MiuixCardSurface(Modifier.fillMaxWidth()) {
-            Column(Modifier.fillMaxWidth()) {
-                SettingRow(
-                    title = "设置",
-                    value = "${settings.themeMode.label()} · ${settings.themeColor.label()} · ${settings.componentMaterial.label()}",
-                    onClick = onOpenSettings,
-                    description = "主题和页面动效在设置的“外观”中调整"
-                )
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = YumerinSpacing.CardInset),
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
-                )
-                SettingRow(
-                    title = "关于 Yumerin",
-                    value = "版本与组件",
-                    onClick = onOpenAbout,
-                    description = "版本信息和开源许可证"
-                )
-            }
-        }
         Spacer(Modifier.height(96.dp))
     }
 }

@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.*
+import androidx.compose.material3.LocalContentColor as Material3LocalContentColor
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
@@ -166,23 +167,29 @@ fun App(
                     color = MaterialTheme.colorScheme.surface,
                     contentColor = MaterialTheme.colorScheme.onSurface
                 ) {
-                    AppContent(
-                        graph = graph,
-                        appIcon = appIcon,
-                        initialChatId = initialChatId,
-                        settings = settings,
-                        reducedMotion = reducedMotion,
-                        initialized = initialized,
-                        onBackgroundPermissionRequest = onBackgroundPermissionRequest,
-                        onExportData = onExportData,
-                        onImportDataRequest = onImportDataRequest,
-                        onPickAvatar = onPickAvatar,
-                        onPickLocalModel = onPickLocalModel,
-                        skipAdultConfirmationForDebug = skipAdultConfirmationForDebug,
-                        appVersionName = appVersionName,
-                        onCheckForUpdates = onCheckForUpdates,
-                        onOpenExternalUrl = onOpenExternalUrl
-                    )
+                    // Miuix and Material3 use separate content-color locals. Bridge the
+                    // Material3 one so default Text color follows the active theme too.
+                    CompositionLocalProvider(
+                        Material3LocalContentColor provides MaterialTheme.colorScheme.onSurface
+                    ) {
+                        AppContent(
+                            graph = graph,
+                            appIcon = appIcon,
+                            initialChatId = initialChatId,
+                            settings = settings,
+                            reducedMotion = reducedMotion,
+                            initialized = initialized,
+                            onBackgroundPermissionRequest = onBackgroundPermissionRequest,
+                            onExportData = onExportData,
+                            onImportDataRequest = onImportDataRequest,
+                            onPickAvatar = onPickAvatar,
+                            onPickLocalModel = onPickLocalModel,
+                            skipAdultConfirmationForDebug = skipAdultConfirmationForDebug,
+                            appVersionName = appVersionName,
+                            onCheckForUpdates = onCheckForUpdates,
+                            onOpenExternalUrl = onOpenExternalUrl
+                        )
+                    }
                 }
             }
         }
@@ -495,8 +502,6 @@ private fun AppContent(
                                                                                 settings = settings,
                                         onPickAvatar = onPickAvatar,
                                         onSettingsChanged = ::updateSettings,
-                                        onOpenSettings = { destination = AppDestination.SETTINGS },
-                                        onOpenAbout = { destination = AppDestination.ABOUT() },
                                         onOpenUserProfile = { destination = AppDestination.USER_PROFILE() }
                                     )
                                     is AppDestination.USER_PROFILE -> UserProfilePage(

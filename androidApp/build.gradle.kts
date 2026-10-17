@@ -38,8 +38,8 @@ android {
         applicationId = "com.lhy.yumerin"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 4
-        versionName = "1.3.0"
+        versionCode = 5
+        versionName = "1.3.1"
         if (phoneOptimizedApk) {
             ndk {
                 abiFilters.add("arm64-v8a")
