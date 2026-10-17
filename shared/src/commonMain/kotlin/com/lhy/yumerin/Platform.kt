@@ -1,7 +1,0 @@
-package com.lhy.yumerin
-
-interface Platform {
-    val name: String
-}
-
-expect fun getPlatform(): Platform

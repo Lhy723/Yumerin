@@ -9,7 +9,6 @@ import com.lhy.yumerin.core.model.AgentService
 import com.lhy.yumerin.core.model.AppSettings
 import com.lhy.yumerin.core.model.CharacterProfile
 import com.lhy.yumerin.core.model.ChatKind
-import com.lhy.yumerin.core.model.ChatMessage
 import com.lhy.yumerin.core.model.ChatThread
 import com.lhy.yumerin.core.model.GenerationParameters
 import com.lhy.yumerin.core.model.MemoryCategory
@@ -17,7 +16,6 @@ import com.lhy.yumerin.core.model.MemoryEntry
 import com.lhy.yumerin.core.model.MemoryReviewState
 import com.lhy.yumerin.core.model.MessageDeliveryState
 import com.lhy.yumerin.core.model.MessageSenderType
-import com.lhy.yumerin.core.model.MessageType
 import com.lhy.yumerin.core.model.ModelProfile
 import com.lhy.yumerin.core.model.ModelProviderKind
 import com.lhy.yumerin.core.model.SummaryMaintenanceMode
