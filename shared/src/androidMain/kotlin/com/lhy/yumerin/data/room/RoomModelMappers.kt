@@ -24,7 +24,10 @@ fun ModelProfileEntity.toDomain() = ModelProfile(
     createdAt = createdAt,
     updatedAt = updatedAt,
     localBackend = localBackend,
-    deletedAt = deletedAt
+    deletedAt = deletedAt,
+    capabilities = capabilities.split("\u001F").filter(String::isNotBlank)
+        .mapNotNull { name -> ModelCapability.entries.firstOrNull { it.name == name } }
+        .toSet()
 )
 
 fun ModelProfile.toEntity() = ModelProfileEntity(
@@ -47,7 +50,8 @@ fun ModelProfile.toEntity() = ModelProfileEntity(
     createdAt = createdAt,
     updatedAt = updatedAt,
     localBackend = localBackend,
-    deletedAt = deletedAt
+    deletedAt = deletedAt,
+    capabilities = capabilities.joinToString("\u001F") { it.name }
 )
 
 fun LocalModelArtifactEntity.toDomain() = LocalModelArtifact(

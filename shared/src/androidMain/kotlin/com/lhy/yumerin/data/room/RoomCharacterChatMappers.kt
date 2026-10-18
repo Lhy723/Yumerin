@@ -92,7 +92,8 @@ fun ChatMessageEntity.toDomain() = ChatMessage(
     responseState = responseState?.let { enumValueOrDefault(it, AiResponseState.GENERATING) },
     errorMessage = errorMessage,
     usedMemoryIds = usedMemoryIds.split('\u001F').filter(String::isNotBlank),
-    deletedAt = deletedAt
+    deletedAt = deletedAt,
+    parts = decodeMessageParts(partsJson)
 )
 
 fun ChatMessage.toEntity() = ChatMessageEntity(
@@ -111,7 +112,8 @@ fun ChatMessage.toEntity() = ChatMessageEntity(
     responseState = responseState?.name,
     errorMessage = errorMessage,
     usedMemoryIds = usedMemoryIds.joinToString("\u001F"),
-    deletedAt = deletedAt
+    deletedAt = deletedAt,
+    partsJson = encodeMessageParts(parts)
 )
 
 fun GroupEntity.toDomain() = GroupProfile(

@@ -562,6 +562,22 @@ private fun MessageBubble(
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
+                        message.parts.filterIsInstance<com.lhy.yumerin.core.model.MessagePart.Image>().forEach { image ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.72f)
+                                    .clip(RoundedCornerShape(YumerinChatTokens.BubbleRadius))
+                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.4f))
+                            ) {
+                                com.lhy.yumerin.designsystem.MessageImageView(
+                                    uri = image.uri,
+                                    contentDescription = "消息图片",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = 120.dp, max = 260.dp)
+                                )
+                            }
+                        }
                         MiuixText(
                             text = message.text.trim().ifBlank {
                                 when (message.responseState) {

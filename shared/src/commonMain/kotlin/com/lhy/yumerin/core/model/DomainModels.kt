@@ -181,8 +181,46 @@ data class ChatMessage(
     val responseState: AiResponseState? = null,
     val errorMessage: String? = null,
     val usedMemoryIds: List<EntityId> = emptyList(),
-    val deletedAt: Long? = null
-)
+    val deletedAt: Long? = null,
+    /** Content parts beyond the text column; empty means a pure text message. */
+    val parts: List<MessagePart> = emptyList()
+) {
+    /** True when this message carries at least one non-text part. */
+    val hasAttachments: Boolean get() = parts.any { it !is MessagePart.Text }
+}
+
+/** Encodes [parts] for the Room `partsJson` column; empty list encodes to blank. */
+fun encodeMessageParts(parts: List<MessagePart>): String = parts.joinToString("\u001E") { part ->
+    when (part) {
+        is MessagePart.Text -> "text\u001F${part.text}"
+        is MessagePart.Image -> "image\u001F${part.uri}"
+        is MessagePart.Audio -> "audio\u001F${part.uri}\u001F${part.durationMillis ?: -1L}"
+        is MessagePart.File -> "file\u001F${part.uri}\u001F${part.name}\u001F${part.sizeBytes ?: -1L}"
+    }
+}
+
+/** Inverse of [encodeMessageParts]; unknown or malformed chunks are dropped. */
+fun decodeMessageParts(encoded: String): List<MessagePart> {
+    if (encoded.isBlank()) return emptyList()
+    return encoded.split("\u001E").mapNotNull { chunk ->
+        val fields = chunk.split("\u001F")
+        when (fields.firstOrNull()) {
+            "text" -> MessagePart.Text(fields.getOrElse(1) { "" })
+            "image" -> fields.getOrNull(1)?.takeIf(String::isNotBlank)?.let(MessagePart::Image)
+            "audio" -> fields.getOrNull(1)?.takeIf(String::isNotBlank)?.let { uri ->
+                MessagePart.Audio(uri, fields.getOrNull(2)?.toLongOrNull()?.takeIf { it >= 0 })
+            }
+            "file" -> fields.getOrNull(1)?.takeIf(String::isNotBlank)?.let { uri ->
+                MessagePart.File(
+                    uri = uri,
+                    name = fields.getOrElse(2) { uri.substringAfterLast('/') },
+                    sizeBytes = fields.getOrNull(3)?.toLongOrNull()?.takeIf { it >= 0 }
+                )
+            }
+            else -> null
+        }
+    }
+}
 
 data class GroupProfile(
     val id: EntityId,
@@ -263,7 +301,9 @@ data class ModelProfile(
     val createdAt: Long,
     val updatedAt: Long,
     val localBackend: String = "auto",
-    val deletedAt: Long? = null
+    val deletedAt: Long? = null,
+    /** Declared provider capabilities; routing and normalization read this. */
+    val capabilities: Set<ModelCapability> = emptySet()
 )
 
 data class LocalModelArtifact(

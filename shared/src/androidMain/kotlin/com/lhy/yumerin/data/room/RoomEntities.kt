@@ -60,7 +60,8 @@ data class ChatMessageEntity(
     val responseState: String? = null,
     val errorMessage: String? = null,
     val usedMemoryIds: String = "",
-    val deletedAt: Long? = null
+    val deletedAt: Long? = null,
+    val partsJson: String = ""
 )
 
 @Entity(tableName = "groups")
@@ -128,7 +129,8 @@ data class ModelProfileEntity(
     val createdAt: Long,
     val updatedAt: Long,
     val localBackend: String = "auto",
-    val deletedAt: Long? = null
+    val deletedAt: Long? = null,
+    val capabilities: String = ""
 )
 
 @Entity(tableName = "local_model_artifacts")

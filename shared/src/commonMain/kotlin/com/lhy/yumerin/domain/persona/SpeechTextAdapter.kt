@@ -56,7 +56,7 @@ object SpeechTextAdapter {
     private val ACTION_BLOCK = Regex("\\*([^*\\n]{1,40})\\*")
     private val MARKDOWN_BOLD_OR_ITALIC = Regex("(\\*\\*|__)(.*?)\\1")
     private val MARKDOWN_HEADER = Regex("(?m)^#{1,6}\\s*(.*)$")
-    private val MARKDOWN_CODE_BLOCK = Regex("```.*?```", RegexOption.DOT_MATCHES_ALL)
+    private val MARKDOWN_CODE_BLOCK = Regex("(?s)```.*?```")
     private val MARKDOWN_LINK = Regex("\\[([^\\]]*)\\]\\([^)]*\\)")
     private val EMOJI_RUN = Regex("[\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{27BF}]+")
     private val EXAMPLE_MARKER = Regex("<START>", RegexOption.IGNORE_CASE)
