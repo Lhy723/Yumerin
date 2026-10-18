@@ -217,7 +217,26 @@ data class MemoryEntry(
     val reviewAt: Long?,
     val reviewReason: String? = null,
     val expiresAt: Long? = null,
-    val deletedAt: Long? = null
+    val deletedAt: Long? = null,
+    /** Episodic weight (0..1); recall ranks pinned first, then importance. */
+    val importance: Float = 0.5f,
+    /** Short affect label captured when the entry was written (e.g. "开心"). */
+    val emotionTag: String? = null,
+    /** When the remembered event happened, distinct from createdAt. */
+    val occurredAt: Long? = null,
+    /** Structured user-profile fact (portrait layer); null for ordinary entries. */
+    val structuredFact: StructuredFact? = null
+)
+
+/**
+ * A structured portrait fact about the user: one subject-predicate-value triple
+ * with provenance carried by the owning MemoryEntry. Users can view, edit, and
+ * delete it through the same memory surfaces.
+ */
+data class StructuredFact(
+    val subject: String,
+    val predicate: String,
+    val value: String
 )
 
 data class GenerationParameters(
@@ -330,7 +349,19 @@ data class CharacterRuntimeState(
     val lastInteractionAt: Long? = null,
     val sourceChatId: EntityId? = null,
     val sourceMessageId: EntityId? = null,
-    val updatedAt: Long = 0L
+    val updatedAt: Long = 0L,
+    /** How the character addresses the user ("小老板", pet names); user-editable. */
+    val formsOfAddress: List<String> = emptyList(),
+    /** Running jokes and shared references the character may echo. */
+    val sharedInJokes: List<String> = emptyList(),
+    /** Unfinished promises or follow-ups, each with an optional due time. */
+    val openCommitments: List<OpenCommitment> = emptyList()
+)
+
+/** A promised follow-up in the relationship-state layer; surfaced in continuity settings. */
+data class OpenCommitment(
+    val text: String,
+    val dueAtMillis: Long? = null
 )
 
 data class ScheduledAgentGoal(

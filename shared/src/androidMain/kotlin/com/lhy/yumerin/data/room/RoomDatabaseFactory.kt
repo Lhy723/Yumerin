@@ -46,7 +46,8 @@ private val DATABASE_MIGRATIONS = arrayOf(
     YumerinDatabase.MIGRATION_7_8,
     YumerinDatabase.MIGRATION_8_9,
     YumerinDatabase.MIGRATION_9_10,
-    YumerinDatabase.MIGRATION_10_11
+    YumerinDatabase.MIGRATION_10_11,
+    YumerinDatabase.MIGRATION_11_12
 )
 
 /**

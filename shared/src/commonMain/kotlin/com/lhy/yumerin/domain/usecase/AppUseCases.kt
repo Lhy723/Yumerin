@@ -2,6 +2,7 @@ package com.lhy.yumerin.domain.usecase
 
 import com.lhy.yumerin.core.model.*
 import com.lhy.yumerin.domain.agent.AgentAdmissionArbiter
+import com.lhy.yumerin.domain.agent.AgentRunDiagnostics
 import com.lhy.yumerin.domain.agent.AgentCapability
 import com.lhy.yumerin.domain.agent.AgentRuntime
 import com.lhy.yumerin.domain.agent.CalculatorCapability
@@ -31,6 +32,7 @@ class AppUseCases(
     agentCapabilities: List<AgentCapability>? = null,
     agentAdmissionArbiter: AgentAdmissionArbiter = AgentAdmissionArbiter()
 ) {
+    val agentRunDiagnostics = AgentRunDiagnostics()
     private val agentRuntime = AgentRuntime(
         agent,
         agentCapabilities ?: listOf(
@@ -39,7 +41,7 @@ class AppUseCases(
             ScheduleLookupCapability(schedules)
         ),
         admission = agentAdmissionArbiter
-    )
+    ).apply { diagnostics = agentRunDiagnostics }
     private val characterStateCoordinator = CharacterStateCoordinator(characterRuntimeStates)
     private val proactiveAdmissionPolicy = ProactiveAdmissionPolicy(chats)
     private val delegatedGoalRepository = delegatedAgentGoals ?: NoopDelegatedAgentGoalRepository

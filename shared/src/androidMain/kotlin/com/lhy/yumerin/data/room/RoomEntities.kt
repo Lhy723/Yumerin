@@ -98,7 +98,13 @@ data class MemoryEntryEntity(
     val reviewAt: Long?,
     val reviewReason: String? = null,
     val expiresAt: Long? = null,
-    val deletedAt: Long? = null
+    val deletedAt: Long? = null,
+    val importance: Float = 0.5f,
+    val emotionTag: String? = null,
+    val occurredAt: Long? = null,
+    val factSubject: String? = null,
+    val factPredicate: String? = null,
+    val factValue: String? = null
 )
 
 @Entity(tableName = "model_profiles")
@@ -218,7 +224,10 @@ data class CharacterRuntimeStateEntity(
     val lastInteractionAt: Long?,
     val sourceChatId: String?,
     val sourceMessageId: String?,
-    val updatedAt: Long
+    val updatedAt: Long,
+    val formsOfAddress: String = "",
+    val sharedInJokes: String = "",
+    val openCommitments: String = ""
 )
 
 @Entity(tableName = "scheduled_agent_goals")

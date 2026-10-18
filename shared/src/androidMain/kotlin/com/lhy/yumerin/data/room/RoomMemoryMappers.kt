@@ -18,7 +18,15 @@ fun MemoryEntryEntity.toDomain() = MemoryEntry(
     reviewAt = reviewAt,
     reviewReason = reviewReason,
     expiresAt = expiresAt,
-    deletedAt = deletedAt
+    deletedAt = deletedAt,
+    importance = importance,
+    emotionTag = emotionTag,
+    occurredAt = occurredAt,
+    structuredFact = if (factSubject != null && factPredicate != null && factValue != null) {
+        StructuredFact(factSubject, factPredicate, factValue)
+    } else {
+        null
+    }
 )
 
 fun MemoryEntry.toEntity() = MemoryEntryEntity(
@@ -37,5 +45,11 @@ fun MemoryEntry.toEntity() = MemoryEntryEntity(
     reviewAt = reviewAt,
     reviewReason = reviewReason,
     expiresAt = expiresAt,
-    deletedAt = deletedAt
+    deletedAt = deletedAt,
+    importance = importance,
+    emotionTag = emotionTag,
+    occurredAt = occurredAt,
+    factSubject = structuredFact?.subject,
+    factPredicate = structuredFact?.predicate,
+    factValue = structuredFact?.value
 )

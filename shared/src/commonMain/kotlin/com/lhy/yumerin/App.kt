@@ -73,6 +73,7 @@ private sealed interface AppDestination {
     data class ABOUT(val returnTo: AppDestination = PROFILE) : AppDestination
     data object SCHEDULES : AppDestination
     data object DATA_MANAGEMENT : AppDestination
+    data object AGENT_DEBUG : AppDestination
 }
 
 private val AppDestination.bottomPage: AppPage?
@@ -111,6 +112,7 @@ private fun AppDestination.rank(): Int = when (this) {
     AppDestination.DATA_MANAGEMENT -> 16
     AppDestination.CHARACTER_CONTINUITY_LIST -> 17
     is AppDestination.CHARACTER_CONTINUITY -> 18
+    AppDestination.AGENT_DEBUG -> 19
 }
 
 @Composable
@@ -333,6 +335,7 @@ private fun AppContent(
                 is AppDestination.ABOUT -> current.returnTo
                 AppDestination.SCHEDULES -> AppDestination.SETTINGS
                 AppDestination.DATA_MANAGEMENT -> AppDestination.SETTINGS
+            AppDestination.AGENT_DEBUG -> AppDestination.SETTINGS
                 else -> AppDestination.CHAT_LIST
             }
         }
@@ -646,6 +649,7 @@ private fun AppContent(
                                         },
                                         onOpenModels = { destination = AppDestination.MODELS },
                                         onOpenDataManagement = { destination = AppDestination.DATA_MANAGEMENT },
+                                        onOpenAgentDebug = { destination = AppDestination.AGENT_DEBUG },
                                         onOpenAbout = { destination = AppDestination.ABOUT(AppDestination.SETTINGS) }
                                     )
                                     is AppDestination.SETTINGS_CATEGORY -> SettingsCategoryPage(
@@ -713,6 +717,10 @@ private fun AppContent(
                                                                                 graph = graph,
                                         characters = characters,
                                         chats = chats,
+                                        onBack = { destination = AppDestination.SETTINGS }
+                                    )
+                                    AppDestination.AGENT_DEBUG -> AgentDebugPage(
+                                        diagnostics = useCases.agentRunDiagnostics,
                                         onBack = { destination = AppDestination.SETTINGS }
                                     )
                                     AppDestination.DATA_MANAGEMENT -> DataManagementPage(

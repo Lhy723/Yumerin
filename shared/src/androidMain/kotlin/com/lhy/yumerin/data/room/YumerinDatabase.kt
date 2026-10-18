@@ -22,7 +22,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         DelegatedAgentGoalEntity::class,
         DelegatedAgentGoalStepEntity::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 abstract class YumerinDatabase : RoomDatabase() {
@@ -201,6 +201,20 @@ abstract class YumerinDatabase : RoomDatabase() {
         val MIGRATION_10_11 = object : Migration(10, 11) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE app_settings ADD COLUMN componentMaterial TEXT NOT NULL DEFAULT 'STANDARD'")
+            }
+        }
+
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE memory_entries ADD COLUMN importance REAL NOT NULL DEFAULT 0.5")
+                db.execSQL("ALTER TABLE memory_entries ADD COLUMN emotionTag TEXT")
+                db.execSQL("ALTER TABLE memory_entries ADD COLUMN occurredAt INTEGER")
+                db.execSQL("ALTER TABLE memory_entries ADD COLUMN factSubject TEXT")
+                db.execSQL("ALTER TABLE memory_entries ADD COLUMN factPredicate TEXT")
+                db.execSQL("ALTER TABLE memory_entries ADD COLUMN factValue TEXT")
+                db.execSQL("ALTER TABLE character_runtime_states ADD COLUMN formsOfAddress TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE character_runtime_states ADD COLUMN sharedInJokes TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE character_runtime_states ADD COLUMN openCommitments TEXT NOT NULL DEFAULT ''")
             }
         }
 

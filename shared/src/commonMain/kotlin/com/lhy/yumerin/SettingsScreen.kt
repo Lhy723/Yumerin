@@ -56,6 +56,7 @@ internal fun SettingsPage(
     onOpenUserProfile: () -> Unit,
     onOpenModels: () -> Unit,
     onOpenDataManagement: () -> Unit,
+    onOpenAgentDebug: () -> Unit,
     onOpenAbout: () -> Unit
 ) {
     PageColumn {
@@ -134,6 +135,9 @@ internal fun SettingsPage(
             )
             SettingsOverviewRow(
                 "数据与存储", "导出、导入和本地数据管理", YumerinStorageIcon, onOpenDataManagement
+            )
+            SettingsOverviewRow(
+                "Agent 调试", "查看最近运行的提示词组成与能力调用", YumerinModelIcon, onOpenAgentDebug
             )
             SettingsOverviewRow(
                 "关于 Yumerin", "版本信息、检查更新和开源组件", YumerinInfoIcon, onOpenAbout

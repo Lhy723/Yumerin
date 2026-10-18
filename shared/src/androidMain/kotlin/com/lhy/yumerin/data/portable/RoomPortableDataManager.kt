@@ -310,7 +310,10 @@ class RoomPortableDataManager(
         .put("pinned", value.pinned).putNullable("supersedesId", value.supersedesId)
         .put("createdAt", value.createdAt).put("updatedAt", value.updatedAt).putNullable("reviewAt", value.reviewAt)
         .putNullable("reviewReason", value.reviewReason).putNullable("expiresAt", value.expiresAt)
-        .putNullable("deletedAt", value.deletedAt)
+        .putNullable("deletedAt", value.deletedAt).put("importance", value.importance)
+        .putNullable("emotionTag", value.emotionTag).putNullable("occurredAt", value.occurredAt)
+        .putNullable("factSubject", value.factSubject).putNullable("factPredicate", value.factPredicate)
+        .putNullable("factValue", value.factValue)
 
     private fun modelJson(value: ModelProfileEntity) = JSONObject()
         .put("id", value.id).put("displayName", value.displayName).put("providerKind", value.providerKind)
@@ -361,6 +364,8 @@ class RoomPortableDataManager(
         .put("trust", value.trust).put("closeness", value.closeness).put("completedInteractions", value.completedInteractions)
         .putNullable("lastInteractionAt", value.lastInteractionAt).putNullable("sourceChatId", value.sourceChatId)
         .putNullable("sourceMessageId", value.sourceMessageId).put("updatedAt", value.updatedAt)
+        .put("formsOfAddress", value.formsOfAddress).put("sharedInJokes", value.sharedInJokes)
+        .put("openCommitments", value.openCommitments)
 
     private fun agentGoalJson(value: ScheduledAgentGoalEntity) = JSONObject()
         .put("id", value.id).put("characterId", value.characterId).put("chatId", value.chatId)
@@ -424,7 +429,10 @@ class RoomPortableDataManager(
         confidence = v.optDouble("confidence", 0.0).toFloat(), reviewState = v.str("reviewState"), pinned = v.optBoolean("pinned"),
         supersedesId = v.nullableString("supersedesId"), createdAt = v.optLong("createdAt"), updatedAt = v.optLong("updatedAt"),
         reviewAt = v.nullableLong("reviewAt"), reviewReason = v.nullableString("reviewReason"), expiresAt = v.nullableLong("expiresAt"),
-        deletedAt = v.nullableLong("deletedAt")
+        deletedAt = v.nullableLong("deletedAt"), importance = v.optDouble("importance", 0.5).toFloat(),
+        emotionTag = v.nullableString("emotionTag"), occurredAt = v.nullableLong("occurredAt"),
+        factSubject = v.nullableString("factSubject"), factPredicate = v.nullableString("factPredicate"),
+        factValue = v.nullableString("factValue")
     )
 
     private fun parseModel(v: JSONObject) = ModelProfileEntity(
@@ -485,7 +493,10 @@ class RoomPortableDataManager(
             lastInteractionAt = v.nullableLong("lastInteractionAt"),
             sourceChatId = v.nullableString("sourceChatId"),
             sourceMessageId = v.nullableString("sourceMessageId"),
-            updatedAt = v.optLong("updatedAt").coerceAtLeast(0L)
+            updatedAt = v.optLong("updatedAt").coerceAtLeast(0L),
+            formsOfAddress = v.optString("formsOfAddress"),
+            sharedInJokes = v.optString("sharedInJokes"),
+            openCommitments = v.optString("openCommitments")
         )
     }
 

@@ -55,6 +55,9 @@ class AgentRuntime(
 ) {
     private val registry = AgentCapabilityRegistry(capabilities)
 
+    /** Optional diagnostics recorder; wired at composition, absent in tests by default. */
+    var diagnostics: AgentRunDiagnostics? = null
+
     init {
         require(maxCapabilityCalls in 0..MAX_ALLOWED_CAPABILITY_CALLS)
         require(maxObservationCharacters > 0)
@@ -143,7 +146,10 @@ class AgentRuntime(
         onAccumulatedText: suspend (String) -> Unit,
         onEvent: AgentRunEventHandler
     ): AgentReply {
-        suspend fun emit(event: AgentRunEvent) = onEvent(event)
+        suspend fun emit(event: AgentRunEvent) {
+            onEvent(event)
+            diagnostics?.recordEvent(event)
+        }
         val now = { eventNow() }
         val conversation = mutableListOf<AgentConversationMessage>()
         val context = AgentCapabilityContext(
@@ -170,6 +176,15 @@ class AgentRuntime(
         conversation += assembled.messages
         var usedMemoryIds = assembled.usedMemoryIds
         var hadCapabilityActivity = false
+        diagnostics?.recordStart(
+            runId = runId,
+            traceId = traceId,
+            chatId = request.chat.id,
+            characterId = request.character?.id,
+            startedAtMillis = eventNow(),
+            slotBudgets = assembled.slotBudgets,
+            worldInfoHits = assembled.worldInfoHits
+        )
 
         val contextOutputTokenBudget = ((request.model.contextLength ?: DEFAULT_CONTEXT_LENGTH) / 4).coerceAtLeast(128)
         val totalOutputTokenBudget = minOf(maxOutputTokensPerRun, contextOutputTokenBudget)

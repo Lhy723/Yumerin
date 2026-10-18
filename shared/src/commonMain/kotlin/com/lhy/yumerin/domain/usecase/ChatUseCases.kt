@@ -9,6 +9,7 @@ import com.lhy.yumerin.core.model.AgentRunInterrupted
 import com.lhy.yumerin.domain.agent.AgentRuntime
 import com.lhy.yumerin.domain.agent.CharacterMemoryRetriever
 import com.lhy.yumerin.domain.agent.CharacterStateCoordinator
+import com.lhy.yumerin.domain.memory.MemoryIntegrator
 import com.lhy.yumerin.domain.memory.MemoryPolicy
 import com.lhy.yumerin.domain.repository.*
 import com.lhy.yumerin.domain.safety.SafetyPolicy
@@ -115,7 +116,8 @@ class SendChatMessageUseCase(
     private val models: ModelProfileRepository,
     private val agentRuntime: AgentRuntime,
     private val groupMemberships: GroupMembershipRepository,
-    private val characterStateCoordinator: CharacterStateCoordinator
+    private val characterStateCoordinator: CharacterStateCoordinator,
+    private val memoryIntegrator: MemoryIntegrator = MemoryIntegrator(memories)
 ) {
     suspend operator fun invoke(command: SendChatMessageCommand): SendChatMessageResult {
         val text = command.text.trim()
@@ -220,12 +222,6 @@ class SendChatMessageUseCase(
         chats.appendMessage(userMessage)
         chats.appendMessage(userMessage.copy(deliveryState = MessageDeliveryState.SENT))
 
-        if (command.settings.autoMemoryEnabled) {
-            (if (group == null) listOfNotNull(directCharacter) else participants.distinctBy { it.id }).forEach { character ->
-                persistStableMemories(character, command.chatId, userMessage.id, text)
-            }
-        }
-
         var responseCount = 0
         var previousResponseFingerprint: String? = null
         for ((character, selectedModel) in selectedModels) {
@@ -293,6 +289,17 @@ class SendChatMessageUseCase(
                 if (!failed && fingerprint.isNotBlank()) {
                     previousResponseFingerprint = fingerprint
                     characterStateCoordinator.commit(preparedState, useCaseNowMillis())
+                    // Memory consolidation runs only after a successful turn;
+                    // failed, cancelled, and retried-in-vain turns never write.
+                    if (command.settings.autoMemoryEnabled) {
+                        memoryIntegrator.integrateSuccessfulTurn(
+                            characterId = character.id,
+                            chatId = command.chatId,
+                            sourceMessageId = userMessage.id,
+                            userText = text,
+                            nowMillis = useCaseNowMillis()
+                        )
+                    }
                 }
                 responseCount += 1
             } catch (cancelled: CancellationException) {
@@ -346,32 +353,6 @@ class SendChatMessageUseCase(
         }
         return compressed
     }
-
-    private suspend fun persistStableMemories(character: CharacterProfile, chatId: EntityId, sourceMessageId: EntityId, text: String) {
-        val current = memories.observeMemories(character.id).first()
-        MemoryPolicy.extract(text).forEach { candidate ->
-            if (current.any { it.content == candidate.content && it.reviewState != MemoryReviewState.REJECTED }) return@forEach
-            val sameTopic = current.filter { it.category == candidate.category && memoryTopic(it.content) == memoryTopic(candidate.content) }
-            val timestamp = useCaseNowMillis()
-            val highConfidence = candidate.confidence >= 0.86f && !candidate.sensitive
-            val conflict = sameTopic.firstOrNull { it.content != candidate.content && it.reviewState == MemoryReviewState.ACCEPTED }
-            if (conflict != null && highConfidence) memories.saveMemory(conflict.copy(reviewState = MemoryReviewState.SUPERSEDED, updatedAt = timestamp))
-            memories.saveMemory(
-                MemoryEntry(
-                    id = newEntityId("memory"), characterId = character.id, sourceChatId = chatId,
-                    sourceMessageId = sourceMessageId, category = candidate.category, content = candidate.content,
-                    confidence = candidate.confidence,
-                    reviewState = if (highConfidence) MemoryReviewState.ACCEPTED else MemoryReviewState.PENDING_REVIEW,
-                    pinned = false, supersedesId = conflict?.id, createdAt = timestamp, updatedAt = timestamp,
-                    reviewAt = if (highConfidence) null else timestamp + 7 * 24 * 60 * 60 * 1_000L,
-                    reviewReason = candidate.reviewReason ?: if (conflict != null) "与现有记忆冲突，需要用户确认" else null
-                )
-            )
-        }
-    }
-
-    private fun memoryTopic(content: String): String = content.removePrefix("用户喜欢")
-        .removePrefix("用户不喜欢").removePrefix("用户可能喜欢").removePrefix("用户的名字是").trim()
 
     private fun relevanceScore(text: String, character: CharacterProfile): Int {
         val keywords = text.split(Regex("[\\s，。！？、；：,.!?;:]+"))
