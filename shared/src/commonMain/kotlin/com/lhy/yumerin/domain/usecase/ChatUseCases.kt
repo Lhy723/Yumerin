@@ -1,6 +1,11 @@
 package com.lhy.yumerin.domain.usecase
 
 import com.lhy.yumerin.core.model.*
+import com.lhy.yumerin.core.model.AgentRunEvent
+import com.lhy.yumerin.core.model.AgentCapabilityRequested
+import com.lhy.yumerin.core.model.AgentCapabilityCompleted
+import com.lhy.yumerin.core.model.AgentBudgetWarning
+import com.lhy.yumerin.core.model.AgentRunInterrupted
 import com.lhy.yumerin.domain.agent.AgentRuntime
 import com.lhy.yumerin.domain.agent.CharacterMemoryRetriever
 import com.lhy.yumerin.domain.agent.CharacterStateCoordinator
@@ -16,6 +21,84 @@ data class SendChatMessageCommand(
     val settings: AppSettings,
     val existingMessageId: EntityId? = null
 )
+
+/**
+ * Renders one in-flight assistant turn into a single message bubble: the
+ * accumulated answer text plus, per [AgentVisibility], a capability status
+ * line. Event-driven so a future voice or remote channel reuses the same
+ * rendering rules without touching message persistence.
+ */
+internal class AgentTurnBubbleRenderer(
+    private val chats: ChatRepository,
+    private val template: ChatMessage,
+    private val visibility: AgentVisibility
+) {
+    private var accumulated: String = ""
+    private val statusLines = mutableListOf<String>()
+    private var stoppedPainted = false
+
+    suspend fun onAccumulatedText(text: String) {
+        accumulated = text
+        repaint()
+    }
+
+    suspend fun onEvent(event: AgentRunEvent) {
+        when (event) {
+            is AgentCapabilityRequested -> if (visibility != AgentVisibility.FINAL_ONLY) {
+                statusLines += "正在使用 ${event.call.name}…"
+                repaint()
+            }
+            is AgentCapabilityCompleted -> if (visibility != AgentVisibility.FINAL_ONLY) {
+                val summary = event.userFacingSummary?.takeIf { it.isNotBlank() }
+                    ?: if (event.successful) "已完成 ${event.capabilityName}" else "${event.capabilityName} 执行失败"
+                if (statusLines.isNotEmpty() && statusLines.last().endsWith("…")) {
+                    statusLines[statusLines.lastIndex] = summary
+                } else {
+                    statusLines += summary
+                }
+                repaint()
+            }
+            is AgentBudgetWarning -> if (visibility == AgentVisibility.DETAILED_STEPS) {
+                statusLines += "预算提示：${event.detail}"
+                repaint()
+            }
+            is AgentRunInterrupted -> markStopped()
+            else -> Unit
+        }
+    }
+
+    /** Paints the stopped turn; safe to call from cancellation cleanup too. */
+    suspend fun markStopped() {
+        if (stoppedPainted) return
+        stoppedPainted = true
+        chats.appendMessage(
+            template.copy(
+                text = "已停止生成",
+                timestamp = useCaseNowMillis(),
+                deliveryState = MessageDeliveryState.RETRYABLE,
+                responseState = AiResponseState.STOPPED
+            )
+        )
+    }
+
+    private suspend fun repaint() {
+        val content = when (visibility) {
+            AgentVisibility.FINAL_ONLY -> accumulated
+            AgentVisibility.CONCISE_STATUS -> listOfNotNull(statusLines.lastOrNull(), accumulated)
+                .filter(String::isNotBlank).joinToString("\n\n")
+            AgentVisibility.DETAILED_STEPS -> (statusLines + accumulated)
+                .filter(String::isNotBlank).joinToString("\n\n")
+        }
+        chats.appendMessage(
+            template.copy(
+                text = content,
+                timestamp = useCaseNowMillis(),
+                deliveryState = MessageDeliveryState.PENDING,
+                responseState = AiResponseState.GENERATING
+            )
+        )
+    }
+}
 
 sealed interface SendChatMessageResult {
     data object Empty : SendChatMessageResult
@@ -156,6 +239,11 @@ class SendChatMessageUseCase(
                 deliveryState = MessageDeliveryState.PENDING, responseState = AiResponseState.GENERATING
             )
             chats.appendMessage(generating)
+            val renderer = AgentTurnBubbleRenderer(
+                chats = chats,
+                template = generating,
+                visibility = command.settings.agentVisibility
+            )
             try {
                 val messages = visibleMessagesFor(character, originalChat, group)
                 val preparedChat = compressIfNeeded(originalChat, group, messages, model, command.settings)
@@ -177,16 +265,10 @@ class SendChatMessageUseCase(
                         visibility = command.settings.agentVisibility,
                         emotionalContext = preparedState.emotionalContext
                     ),
-                    trigger = AgentTrigger.USER_MESSAGE
+                    trigger = AgentTrigger.USER_MESSAGE,
+                    onEvent = renderer::onEvent
                 ) { accumulatedText ->
-                    chats.appendMessage(
-                        generating.copy(
-                            text = accumulatedText,
-                            timestamp = useCaseNowMillis(),
-                            deliveryState = MessageDeliveryState.PENDING,
-                            responseState = AiResponseState.GENERATING
-                        )
-                    )
+                    renderer.onAccumulatedText(accumulatedText)
                 }
                 val failed = reply.statusMessage != null
                 val fingerprint = reply.text.trim().lowercase().replace(Regex("\\s+"), " ")
@@ -214,10 +296,7 @@ class SendChatMessageUseCase(
                 }
                 responseCount += 1
             } catch (cancelled: CancellationException) {
-                chats.appendMessage(generating.copy(
-                    text = "已停止生成", timestamp = useCaseNowMillis(),
-                    deliveryState = MessageDeliveryState.RETRYABLE, responseState = AiResponseState.STOPPED
-                ))
+                renderer.markStopped()
                 throw cancelled
             } catch (error: Exception) {
                 chats.appendMessage(generating.copy(
@@ -348,6 +427,11 @@ class RetryChatResponseUseCase(
             responseState = AiResponseState.GENERATING, errorMessage = null
         )
         chats.appendMessage(generating)
+        val renderer = AgentTurnBubbleRenderer(
+            chats = chats,
+            template = generating,
+            visibility = settings.agentVisibility
+        )
         return try {
             val turnTime = useCaseNowMillis()
             val preparedState = characterStateCoordinator.prepare(
@@ -370,9 +454,10 @@ class RetryChatResponseUseCase(
                     visibility = settings.agentVisibility,
                     emotionalContext = preparedState.emotionalContext
                 ),
-                trigger = AgentTrigger.RETRY
+                trigger = AgentTrigger.RETRY,
+                onEvent = renderer::onEvent
             ) { accumulatedText ->
-                chats.appendMessage(generating.copy(text = accumulatedText, timestamp = useCaseNowMillis()))
+                renderer.onAccumulatedText(accumulatedText)
             }
             chats.appendMessage(
                 generating.copy(
@@ -391,10 +476,7 @@ class RetryChatResponseUseCase(
                 SendChatMessageResult.Failed(reply.statusMessage, retryable = true)
             }
         } catch (cancelled: CancellationException) {
-            chats.appendMessage(generating.copy(
-                text = "已停止生成", timestamp = useCaseNowMillis(),
-                deliveryState = MessageDeliveryState.RETRYABLE, responseState = AiResponseState.STOPPED
-            ))
+            renderer.markStopped()
             throw cancelled
         } catch (error: Exception) {
             chats.appendMessage(generating.copy(

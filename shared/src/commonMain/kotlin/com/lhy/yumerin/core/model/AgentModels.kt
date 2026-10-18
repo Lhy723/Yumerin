@@ -11,7 +11,9 @@ data class AgentRequest(
     val goalContext: String? = null,
     val streaming: Boolean = false,
     val visibility: AgentVisibility = AgentVisibility.FINAL_ONLY,
-    val emotionalContext: AgentEmotionalContext? = null
+    val emotionalContext: AgentEmotionalContext? = null,
+    /** Persona asset for prompt assembly; derived from [character] when absent. */
+    val persona: PersonaPackage? = null
 )
 
 /** Prompt-ready, transient guidance assembled from character state and this turn's appraisal. */
