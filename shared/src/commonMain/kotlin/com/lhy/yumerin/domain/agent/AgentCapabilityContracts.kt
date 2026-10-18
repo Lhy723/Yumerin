@@ -49,6 +49,7 @@ class AgentCapabilityRegistry(capabilities: List<AgentCapability>) {
             }
             require(
                 capability.descriptor.effect == AgentCapabilityEffect.READ_ONLY ||
+                    capability.descriptor.effect == AgentCapabilityEffect.EXTERNAL_SIDE_EFFECT ||
                     capability.descriptor.requiresUserConfirmation
             ) {
                 "State-changing capabilities require explicit user confirmation."
@@ -60,7 +61,10 @@ class AgentCapabilityRegistry(capabilities: List<AgentCapability>) {
     fun descriptors(request: AgentRequest): List<AgentCapabilityDescriptor> = byName.values
         .filter { it.isAvailableFor(request) }
         .filter { !it.descriptor.requiresUserConfirmation && it.descriptor.requiredPermissions.isEmpty() }
-        .filter { it.descriptor.effect == AgentCapabilityEffect.READ_ONLY }
+        // External side-effect capabilities are listed so the model can request
+        // them; the runtime routes every call through the approval gate and can
+        // never execute one directly (ADR 0022).
+        .filter { it.descriptor.effect == AgentCapabilityEffect.READ_ONLY || it.descriptor.effect == AgentCapabilityEffect.EXTERNAL_SIDE_EFFECT }
         .map { it.descriptor }
 
     fun find(name: String): AgentCapability? = byName[name]

@@ -75,6 +75,7 @@ class InMemoryAppGraph : AppGraph {
     }
     override val delegatedAgentGoals: DelegatedAgentGoalRepository = InMemoryDelegatedAgentGoalRepository()
     override val pendingExternalActions: com.lhy.yumerin.domain.repository.PendingExternalActionRepository = InMemoryPendingExternalActionRepository()
+    override val externalAuthorization: com.lhy.yumerin.domain.repository.ExternalAuthorizationRepository = InMemoryExternalAuthorizationRepository()
     override val delegatedAgentGoalScheduler: DelegatedAgentGoalScheduler = object : DelegatedAgentGoalScheduler {
         override suspend fun enqueue(goalId: String) = Unit
         override suspend fun enqueueNext(goalId: String) = Unit
@@ -89,7 +90,7 @@ class InMemoryAppGraph : AppGraph {
     override val agent: AgentService = UnavailableAgentService()
     override val backgroundCompanion: BackgroundCompanionController = InMemoryBackgroundCompanionController()
     override val useCases: AppUseCases by lazy {
-        AppUseCases(characters, chats, groups, memories, models, agent, settings, groupMemberships, schedules, avatars, characterRuntimeStates, agentGoals, agentGoalScheduler, delegatedAgentGoals = delegatedAgentGoals, delegatedAgentGoalScheduler = delegatedAgentGoalScheduler)
+        AppUseCases(characters, chats, groups, memories, models, agent, settings, groupMemberships, schedules, avatars, characterRuntimeStates, agentGoals, agentGoalScheduler, delegatedAgentGoals = delegatedAgentGoals, delegatedAgentGoalScheduler = delegatedAgentGoalScheduler, externalAuthorizationRepository = externalAuthorization, pendingExternalActions = pendingExternalActions)
     }
 
     private val seedMutex = Mutex()

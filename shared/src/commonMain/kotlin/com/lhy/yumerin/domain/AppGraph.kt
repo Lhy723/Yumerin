@@ -40,6 +40,7 @@ interface AppGraph {
     val agentGoalScheduler: AgentGoalScheduler
     val delegatedAgentGoals: DelegatedAgentGoalRepository
     val pendingExternalActions: com.lhy.yumerin.domain.repository.PendingExternalActionRepository
+    val externalAuthorization: com.lhy.yumerin.domain.repository.ExternalAuthorizationRepository
     val delegatedAgentGoalScheduler: DelegatedAgentGoalScheduler
     val localModelGateway: LocalModelGateway
     val portableData: PortableDataManager

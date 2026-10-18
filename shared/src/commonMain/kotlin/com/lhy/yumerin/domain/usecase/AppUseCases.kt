@@ -39,7 +39,9 @@ class AppUseCases(
     delegatedAgentGoals: DelegatedAgentGoalRepository? = null,
     delegatedAgentGoalScheduler: DelegatedAgentGoalScheduler? = null,
     agentCapabilities: List<AgentCapability>? = null,
-    agentAdmissionArbiter: AgentAdmissionArbiter = AgentAdmissionArbiter()
+    agentAdmissionArbiter: AgentAdmissionArbiter = AgentAdmissionArbiter(),
+    externalAuthorizationRepository: ExternalAuthorizationRepository? = null,
+    pendingExternalActions: PendingExternalActionRepository? = null
 ) {
     val agentRunDiagnostics = AgentRunDiagnostics()
     private val delegatedGoalRepository = delegatedAgentGoals ?: NoopDelegatedAgentGoalRepository
@@ -56,7 +58,28 @@ class AppUseCases(
             DelegateTaskCapability(createDelegatedAgentGoal)
         ),
         admission = agentAdmissionArbiter
-    ).apply { diagnostics = agentRunDiagnostics }
+    ).apply {
+        diagnostics = agentRunDiagnostics
+        val authorizationRepository = externalAuthorizationRepository
+        if (authorizationRepository != null) {
+            externalAuthorization = object : com.lhy.yumerin.domain.agent.ExternalAuthorizationAccess {
+                override suspend fun getConnection(service: com.lhy.yumerin.core.model.ExternalServiceKind) =
+                    authorizationRepository.getConnections().firstOrNull {
+                        it.service == service && it.status == com.lhy.yumerin.core.model.ExternalConnectionStatus.CONNECTED
+                    }
+
+                override suspend fun accountLabel(service: com.lhy.yumerin.core.model.ExternalServiceKind): String? =
+                    authorizationRepository.getConnections().firstOrNull { it.service == service }?.accountLabel
+            }
+            externalActionGate = com.lhy.yumerin.domain.agent.NoInteractiveExternalActionGate(
+                pendingExternalActions ?: com.lhy.yumerin.data.memory.InMemoryPendingExternalActionRepository(),
+                { useCaseNowMillis() }
+            )
+        }
+    }
+    val manageExternalAuthorization = externalAuthorizationRepository?.let {
+        ManageExternalAuthorizationUseCase(it, pendingExternalActions ?: com.lhy.yumerin.data.memory.InMemoryPendingExternalActionRepository())
+    }
     private val characterStateCoordinator = CharacterStateCoordinator(characterRuntimeStates)
     private val proactiveAdmissionPolicy = ProactiveAdmissionPolicy(chats)
     private val modelRouter = ModelRouter(models)

@@ -43,6 +43,8 @@ class RoomAppGraph(
     override val agentGoalScheduler: AgentGoalScheduler = AndroidAgentGoalScheduler(context, agentGoals)
     override val pendingExternalActions: com.lhy.yumerin.domain.repository.PendingExternalActionRepository =
         com.lhy.yumerin.data.memory.InMemoryPendingExternalActionRepository()
+    override val externalAuthorization: com.lhy.yumerin.domain.repository.ExternalAuthorizationRepository =
+        com.lhy.yumerin.data.memory.InMemoryExternalAuthorizationRepository()
     override val delegatedAgentGoals: DelegatedAgentGoalRepository = RoomDelegatedAgentGoalRepository(database)
     override val delegatedAgentGoalScheduler: DelegatedAgentGoalScheduler = AndroidDelegatedAgentGoalScheduler(context, delegatedAgentGoals)
     override val backgroundCompanion = AndroidBackgroundCompanionController(context)
@@ -80,7 +82,9 @@ class RoomAppGraph(
             agentGoalScheduler = agentGoalScheduler,
             delegatedAgentGoals = delegatedAgentGoals,
             delegatedAgentGoalScheduler = delegatedAgentGoalScheduler,
-            agentAdmissionArbiter = AndroidAgentAdmission.arbiter
+            agentAdmissionArbiter = AndroidAgentAdmission.arbiter,
+            externalAuthorizationRepository = externalAuthorization,
+            pendingExternalActions = pendingExternalActions
         )
     }
 

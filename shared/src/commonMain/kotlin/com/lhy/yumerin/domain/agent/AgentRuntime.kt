@@ -58,6 +58,17 @@ class AgentRuntime(
     /** Optional diagnostics recorder; wired at composition, absent in tests by default. */
     var diagnostics: AgentRunDiagnostics? = null
 
+    /**
+     * External-write authorization seam (ADR 0022). When absent, external
+     * side effects stay rejected exactly as before this extension.
+     */
+    var externalAuthorization: ExternalAuthorizationAccess? = null
+    private val externalAuthorizationPolicy = ExternalAuthorizationPolicy()
+    var externalActionGate: ExternalActionGate = NoInteractiveExternalActionGate(
+        com.lhy.yumerin.data.memory.InMemoryPendingExternalActionRepository(),
+        { Clock.System.now().toEpochMilliseconds() }
+    )
+
     init {
         require(maxCapabilityCalls in 0..MAX_ALLOWED_CAPABILITY_CALLS)
         require(maxObservationCharacters > 0)
@@ -301,8 +312,48 @@ class AgentRuntime(
                                 )
                                 AgentCapabilityResult(false, "The run's ${budgetLabel(budgetRejection)} has been reached; this call was not executed.")
                             }
-                            capability.descriptor.effect == AgentCapabilityEffect.EXTERNAL_SIDE_EFFECT ->
-                                AgentCapabilityResult(false, "External side effects are not available in this run.")
+                            capability.descriptor.effect == AgentCapabilityEffect.EXTERNAL_SIDE_EFFECT -> {
+                                // ADR 0022: external writes never execute inside the
+                                // loop. Prepare a scope, route it through the approval
+                                // gate, and return the outcome as the observation.
+                                val external = capability as? ExternalWriteCapability
+                                val connection = external?.let { externalAuthorization?.getConnection(it.serviceKind) }
+                                val requestable = external != null && connection != null &&
+                                    externalAuthorizationPolicy.isWriteRequestable(
+                                        connection, capability.descriptor.name, external.requiredWriteScopes
+                                    )
+                                val prepared = external?.takeIf { requestable }?.let {
+                                    runCatching { it.prepareScope(call.argumentsJson, context) }.getOrNull()
+                                }
+                                when {
+                                    external == null ->
+                                        AgentCapabilityResult(false, "This external action needs a connected account with the required scopes; it was not executed.")
+                                    connection == null || !requestable ->
+                                        AgentCapabilityResult(false, "This external action needs a connected account with the required scopes; it was not executed.")
+                                    prepared == null ->
+                                        AgentCapabilityResult(false, "Invalid arguments: the action scope could not be prepared.")
+                                    externalAuthorizationPolicy.isHardBlocked(prepared) ->
+                                        AgentCapabilityResult(false, "This action type is permanently unavailable in Yumerin.")
+                                    else -> {
+                                        val handling = externalActionGate.handle(
+                                            scope = prepared,
+                                            capability = external,
+                                            context = context,
+                                            trigger = trigger,
+                                            runContext = ExternalRunContext(runId, traceId, request.chat.id, request.character?.id)
+                                        )
+                                        hadCapabilityActivity = true
+                                        remainingCalls -= 1
+                                        remainingCapabilityBudget -= capability.descriptor.budgetCostUnits
+                                        when (handling) {
+                                            is ExternalActionHandling.Executed -> AgentCapabilityResult(true, handling.observation)
+                                            is ExternalActionHandling.SavedPending -> AgentCapabilityResult(true, handling.observation)
+                                            is ExternalActionHandling.Denied -> AgentCapabilityResult(false, handling.observation)
+                                            is ExternalActionHandling.Blocked -> AgentCapabilityResult(false, handling.observation)
+                                        }
+                                    }
+                                }
+                            }
                             else -> execute(capability, call, context).also {
                                 hadCapabilityActivity = true
                                 remainingCalls -= 1
