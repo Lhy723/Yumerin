@@ -7,6 +7,13 @@ import com.lhy.yumerin.domain.agent.AgentCapability
 import com.lhy.yumerin.domain.agent.AgentRuntime
 import com.lhy.yumerin.domain.agent.CalculatorCapability
 import com.lhy.yumerin.domain.agent.DelegateTaskCapability
+import com.lhy.yumerin.domain.memory.ExtractedMemoryFact
+import com.lhy.yumerin.domain.memory.HybridMemoryExtractor
+import com.lhy.yumerin.domain.memory.MemoryExtractor
+import com.lhy.yumerin.domain.memory.MemoryIntegrator
+import com.lhy.yumerin.domain.memory.MemoryPolicy
+import com.lhy.yumerin.domain.memory.ModelMemoryExtractor
+import com.lhy.yumerin.domain.model.ModelRouter
 import com.lhy.yumerin.domain.usecase.ImportCharacterCardUseCase
 import com.lhy.yumerin.domain.agent.CharacterStateCoordinator
 import com.lhy.yumerin.domain.agent.MemoryRecallCapability
@@ -52,7 +59,22 @@ class AppUseCases(
     ).apply { diagnostics = agentRunDiagnostics }
     private val characterStateCoordinator = CharacterStateCoordinator(characterRuntimeStates)
     private val proactiveAdmissionPolicy = ProactiveAdmissionPolicy(chats)
-    val sendChatMessage = SendChatMessageUseCase(characters, chats, groups, memories, models, agentRuntime, memberships, characterStateCoordinator)
+    private val modelRouter = ModelRouter(models)
+    private val memoryIntegrator = MemoryIntegrator(
+        memories,
+        HybridMemoryExtractor(
+            lexical = MemoryExtractor { text -> MemoryPolicy.extract(text).map { candidate ->
+                ExtractedMemoryFact(
+                    content = candidate.content, category = candidate.category,
+                    confidence = candidate.confidence, sensitive = candidate.sensitive,
+                    reviewReason = candidate.reviewReason
+                )
+            }
+            },
+            modelBased = ModelMemoryExtractor(modelRouter) { request -> agent.reply(request).text }
+        )
+    )
+    val sendChatMessage = SendChatMessageUseCase(characters, chats, groups, memories, models, agentRuntime, memberships, characterStateCoordinator, memoryIntegrator)
     val retryChatResponse = RetryChatResponseUseCase(characters, chats, groups, memories, models, agentRuntime, memberships, characterStateCoordinator)
     val saveCharacter = SaveCharacterUseCase(characters, chats, avatars)
     val importCharacterCard = ImportCharacterCardUseCase(characters, chats, memories, saveCharacter)

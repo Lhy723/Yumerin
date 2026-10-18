@@ -16,6 +16,7 @@ import com.lhy.yumerin.core.model.AppSettings
 import com.lhy.yumerin.core.model.ContextLengthMode
 import com.lhy.yumerin.core.model.GenerationParameters
 import com.lhy.yumerin.core.model.ModelProfile
+import com.lhy.yumerin.core.model.ModelCapability
 import com.lhy.yumerin.core.model.ModelProviderKind
 import com.lhy.yumerin.core.model.newEntityId
 import com.lhy.yumerin.designsystem.OverlayDropdownMenu
@@ -205,6 +206,10 @@ private fun RemoteModelProfileForm(
     var topP by remember { mutableStateOf("") }
     var maxOutputTokens by remember { mutableStateOf("") }
     var stopSequences by remember { mutableStateOf("") }
+    var visionCapable by remember { mutableStateOf(false) }
+    var audioCapable by remember { mutableStateOf(false) }
+    var toolCallsCapable by remember { mutableStateOf(false) }
+    var streamingCapable by remember { mutableStateOf(true) }
     var showAdvanced by remember { mutableStateOf(false) }
     var modelTestRunning by remember { mutableStateOf(false) }
     var modelTestResult by remember { mutableStateOf<ModelConfigurationTestResult?>(null) }
@@ -281,6 +286,11 @@ private fun RemoteModelProfileForm(
                 MiuixTextField(topP, { topP = it }, Modifier.fillMaxWidth(), label = "Top P", singleLine = true)
                 MiuixTextField(maxOutputTokens, { maxOutputTokens = it }, Modifier.fillMaxWidth(), label = "最大输出 tokens", singleLine = true)
                 MiuixTextField(stopSequences, { stopSequences = it }, Modifier.fillMaxWidth(), label = "Stop sequences（逗号分隔）")
+                MiuixText("模型能力声明（用于图片归一化与任务路由，可随时回来修改）")
+                CapabilityToggle("支持图片输入（视觉）", visionCapable) { visionCapable = it }
+                CapabilityToggle("支持音频输入", audioCapable) { audioCapable = it }
+                CapabilityToggle("支持工具调用", toolCallsCapable) { toolCallsCapable = it }
+                CapabilityToggle("支持流式输出", streamingCapable) { streamingCapable = it }
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.FormField)) {
@@ -341,7 +351,13 @@ private fun RemoteModelProfileForm(
                             localModelVersion = null,
                             enabled = true,
                             createdAt = now,
-                            updatedAt = now
+                            updatedAt = now,
+                            capabilities = buildSet {
+                                if (visionCapable) add(ModelCapability.VISION)
+                                if (audioCapable) add(ModelCapability.AUDIO_IN)
+                                if (toolCallsCapable) add(ModelCapability.TOOL_CALLS)
+                                if (streamingCapable) add(ModelCapability.STREAMING)
+                            }
                         )
                         scope.launch {
                             runCatching {
@@ -382,5 +398,18 @@ private fun RemoteModelProfileForm(
             saveError?.let { MiuixText(it, color = MaterialTheme.colorScheme.error) }
             MiuixTextButton(text = "返回模型列表", onClick = onCancel, modifier = Modifier.fillMaxWidth())
         }
+    }
+}
+
+
+@Composable
+private fun CapabilityToggle(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+    ) {
+        MiuixText(label)
+        androidx.compose.material3.Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }

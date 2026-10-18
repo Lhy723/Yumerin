@@ -18,6 +18,12 @@ internal object JsonFlattener {
         return decodeStringLiteral(raw)
     }
 
+    /** Raw value text of one top-level field in [json], or null. */
+    fun rawField(json: String?, key: String): String? {
+        if (json == null) return null
+        return topLevelFields(json)[key]
+    }
+
     internal fun decodeStringLiteral(raw: String): String? {
         if (raw.length < 2 || !raw.startsWith('"') || !raw.endsWith('"')) return null
         return runCatching { Reader(raw).readString() }.getOrNull()
