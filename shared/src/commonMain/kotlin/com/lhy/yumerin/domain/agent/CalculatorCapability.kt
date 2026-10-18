@@ -48,17 +48,23 @@ class CalculatorCapability : AgentCapability {
 
 /** Small JSON object reader; keeps commonMain independent of platform JSON libraries. */
 internal object AgentJsonStringArgument {
-    fun read(json: String, field: String): String? = runCatching { Parser(json).readStringField(field) }.getOrNull()
+    fun read(json: String, field: String): String? =
+        readFields(json, listOf(field))[field]
+
+    /** Reads multiple string fields from one flat JSON object; extra fields are skipped. */
+    fun readFields(json: String, fields: List<String>): Map<String, String> = runCatching {
+        Parser(json).readStringFields(fields)
+    }.getOrDefault(emptyMap())
 
     private class Parser(private val source: String) {
         private var cursor = 0
 
-        fun readStringField(field: String): String? {
+        fun readStringFields(fields: List<String>): Map<String, String> {
+            val wanted = fields.toSet()
+            val result = mutableMapOf<String, String>()
             skipWhitespace()
             expect('{')
             skipWhitespace()
-            var found = false
-            var result: String? = null
             if (!consume('}')) {
                 while (true) {
                     skipWhitespace()
@@ -66,12 +72,10 @@ internal object AgentJsonStringArgument {
                     skipWhitespace()
                     expect(':')
                     skipWhitespace()
-                    if (key == field) {
-                        if (found || cursor >= source.length || source[cursor] != '\"') return null
-                        found = true
-                        result = readString()
+                    if (key in wanted && key !in result && cursor < source.length && source[cursor] == '"') {
+                        result[key] = readString()
                     } else {
-                        return null
+                        skipValue()
                     }
                     skipWhitespace()
                     if (consume('}')) break
@@ -79,8 +83,50 @@ internal object AgentJsonStringArgument {
                 }
             }
             skipWhitespace()
-            if (cursor != source.length) return null
-            return result.takeIf { found }
+            require(cursor == source.length) { "trailing input" }
+            return result
+        }
+
+        /** Skips one JSON value of any type (null, bool, number, string, array, object). */
+        private fun skipValue() {
+            skipWhitespace()
+            require(cursor < source.length) { "missing value" }
+            when (source[cursor]) {
+                '"' -> readString()
+                '{' -> {
+                    consume('{')
+                    skipWhitespace()
+                    if (!consume('}')) {
+                        while (true) {
+                            skipWhitespace()
+                            readString()
+                            skipWhitespace()
+                            expect(':')
+                            skipValue()
+                            skipWhitespace()
+                            if (consume('}')) break
+                            expect(',')
+                        }
+                    }
+                }
+                '[' -> {
+                    consume('[')
+                    skipWhitespace()
+                    if (!consume(']')) {
+                        while (true) {
+                            skipValue()
+                            skipWhitespace()
+                            if (consume(']')) break
+                            expect(',')
+                        }
+                    }
+                }
+                else -> {
+                    val start = cursor
+                    while (cursor < source.length && source[cursor] !in ",]} \\	\r\n") cursor += 1
+                    require(cursor > start) { "invalid scalar" }
+                }
+            }
         }
 
         private fun readString(): String {

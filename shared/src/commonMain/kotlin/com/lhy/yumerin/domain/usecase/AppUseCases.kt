@@ -6,6 +6,7 @@ import com.lhy.yumerin.domain.agent.AgentRunDiagnostics
 import com.lhy.yumerin.domain.agent.AgentCapability
 import com.lhy.yumerin.domain.agent.AgentRuntime
 import com.lhy.yumerin.domain.agent.CalculatorCapability
+import com.lhy.yumerin.domain.agent.DelegateTaskCapability
 import com.lhy.yumerin.domain.agent.CharacterStateCoordinator
 import com.lhy.yumerin.domain.agent.MemoryRecallCapability
 import com.lhy.yumerin.domain.agent.ScheduleLookupCapability
@@ -33,19 +34,23 @@ class AppUseCases(
     agentAdmissionArbiter: AgentAdmissionArbiter = AgentAdmissionArbiter()
 ) {
     val agentRunDiagnostics = AgentRunDiagnostics()
+    private val delegatedGoalRepository = delegatedAgentGoals ?: NoopDelegatedAgentGoalRepository
+    private val delegatedGoalScheduler = delegatedAgentGoalScheduler ?: NoopDelegatedAgentGoalScheduler
+    val createDelegatedAgentGoal = CreateDelegatedAgentGoalUseCase(
+        characters, chats, delegatedGoalRepository, delegatedGoalScheduler
+    )
     private val agentRuntime = AgentRuntime(
         agent,
         agentCapabilities ?: listOf(
             CalculatorCapability(),
             MemoryRecallCapability(memories),
-            ScheduleLookupCapability(schedules)
+            ScheduleLookupCapability(schedules),
+            DelegateTaskCapability(createDelegatedAgentGoal)
         ),
         admission = agentAdmissionArbiter
     ).apply { diagnostics = agentRunDiagnostics }
     private val characterStateCoordinator = CharacterStateCoordinator(characterRuntimeStates)
     private val proactiveAdmissionPolicy = ProactiveAdmissionPolicy(chats)
-    private val delegatedGoalRepository = delegatedAgentGoals ?: NoopDelegatedAgentGoalRepository
-    private val delegatedGoalScheduler = delegatedAgentGoalScheduler ?: NoopDelegatedAgentGoalScheduler
     val sendChatMessage = SendChatMessageUseCase(characters, chats, groups, memories, models, agentRuntime, memberships, characterStateCoordinator)
     val retryChatResponse = RetryChatResponseUseCase(characters, chats, groups, memories, models, agentRuntime, memberships, characterStateCoordinator)
     val saveCharacter = SaveCharacterUseCase(characters, chats, avatars)
@@ -68,9 +73,6 @@ class AppUseCases(
     val executeAgentGoal = ExecuteAgentGoalUseCase(
         characters, chats, memories, models, agentGoals, settingsRepository, agentRuntime,
         characterStateCoordinator, proactiveAdmissionPolicy
-    )
-    val createDelegatedAgentGoal = CreateDelegatedAgentGoalUseCase(
-        characters, chats, delegatedGoalRepository, delegatedGoalScheduler
     )
     val processDelegatedAgentGoal = ProcessDelegatedAgentGoalUseCase(
         characters, chats, memories, models, delegatedGoalRepository, agentRuntime, settingsRepository, characterStateCoordinator

@@ -41,6 +41,8 @@ class RoomAppGraph(
     override val characterRuntimeStates: CharacterRuntimeStateRepository = RoomCharacterRuntimeStateRepository(database)
     override val agentGoals: AgentGoalRepository = RoomAgentGoalRepository(database)
     override val agentGoalScheduler: AgentGoalScheduler = AndroidAgentGoalScheduler(context, agentGoals)
+    override val pendingExternalActions: com.lhy.yumerin.domain.repository.PendingExternalActionRepository =
+        com.lhy.yumerin.data.memory.InMemoryPendingExternalActionRepository()
     override val delegatedAgentGoals: DelegatedAgentGoalRepository = RoomDelegatedAgentGoalRepository(database)
     override val delegatedAgentGoalScheduler: DelegatedAgentGoalScheduler = AndroidDelegatedAgentGoalScheduler(context, delegatedAgentGoals)
     override val backgroundCompanion = AndroidBackgroundCompanionController(context)

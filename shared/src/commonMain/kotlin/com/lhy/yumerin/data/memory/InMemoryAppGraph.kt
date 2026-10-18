@@ -74,6 +74,7 @@ class InMemoryAppGraph : AppGraph {
         override suspend fun setEnabled(enabled: Boolean) = Unit
     }
     override val delegatedAgentGoals: DelegatedAgentGoalRepository = InMemoryDelegatedAgentGoalRepository()
+    override val pendingExternalActions: com.lhy.yumerin.domain.repository.PendingExternalActionRepository = InMemoryPendingExternalActionRepository()
     override val delegatedAgentGoalScheduler: DelegatedAgentGoalScheduler = object : DelegatedAgentGoalScheduler {
         override suspend fun enqueue(goalId: String) = Unit
         override suspend fun enqueueNext(goalId: String) = Unit
@@ -322,5 +323,15 @@ private class InMemorySettingsRepository : SettingsRepository {
     override fun observeSettings(): Flow<AppSettings> = state
     override suspend fun saveSettings(settings: AppSettings) {
         state.value = settings
+    }
+}
+
+
+internal class InMemoryPendingExternalActionRepository : com.lhy.yumerin.domain.repository.PendingExternalActionRepository {
+    private val state = MutableStateFlow<List<com.lhy.yumerin.core.model.PendingExternalAction>>(emptyList())
+    override fun observeActions() = state
+    override suspend fun getAction(id: EntityId) = state.value.firstOrNull { it.id == id }
+    override suspend fun saveAction(action: com.lhy.yumerin.core.model.PendingExternalAction) {
+        state.update { current -> current.filterNot { it.id == action.id } + action }
     }
 }

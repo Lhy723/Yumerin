@@ -258,6 +258,12 @@ internal fun ChatDetailPage(
                     ),
                 verticalArrangement = Arrangement.spacedBy(YumerinChatTokens.MessageGap)
             ) {
+                val activeGoal by graph.delegatedAgentGoals.observeGoals().collectAsState(null)
+                activeGoal?.filter { it.chatId == chatId && it.status in ACTIVE_GOAL_STATUSES }
+                    ?.maxByOrNull { it.updatedAt }
+                    ?.let { goal ->
+                        DelegatedGoalProgressCard(goal = goal)
+                    }
                 messages.forEach { message ->
                     val isMine = message.senderType == MessageSenderType.USER
                     val senderCharacter = message.senderId?.let { senderId ->
@@ -615,6 +621,52 @@ private fun MessageBubble(
                     onClick = onAvatarClick,
                     contentDescription = "查看用户详情"
                 )
+            }
+        }
+    }
+}
+
+
+private val ACTIVE_GOAL_STATUSES = setOf(
+    com.lhy.yumerin.core.model.DelegatedAgentGoalStatus.QUEUED,
+    com.lhy.yumerin.core.model.DelegatedAgentGoalStatus.RUNNING,
+    com.lhy.yumerin.core.model.DelegatedAgentGoalStatus.PAUSED,
+    com.lhy.yumerin.core.model.DelegatedAgentGoalStatus.WAITING_FOR_USER
+)
+
+@Composable
+private fun DelegatedGoalProgressCard(goal: com.lhy.yumerin.core.model.DelegatedAgentGoal) {
+    var expanded by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val done = goal.steps.count { it.status == com.lhy.yumerin.core.model.DelegatedAgentGoalStepStatus.COMPLETED }
+    val total = goal.steps.size
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(YumerinChatTokens.BubbleRadius),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        onClick = { expanded = !expanded }
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = YumerinChatTokens.BubbleInsetHorizontal, vertical = YumerinChatTokens.BubbleInsetVertical),
+            verticalArrangement = Arrangement.spacedBy(YumerinChatTokens.BubbleMetaGap)
+        ) {
+            MiuixText("【" + goal.title + "】 " + goal.status.name.lowercase().replace('_', ' ') + (if (total > 0) " · $done/$total 步" else ""), style = MaterialTheme.typography.labelLarge)
+            goal.latestSummary?.takeIf { it.isNotBlank() }?.let {
+                MiuixText(it, style = MaterialTheme.typography.bodySmall, maxLines = if (expanded) Int.MAX_VALUE else 2)
+            }
+            if (expanded && goal.steps.isNotEmpty()) {
+                goal.steps.sortedBy { it.order }.forEach { step ->
+                    val mark = when (step.status) {
+                        com.lhy.yumerin.core.model.DelegatedAgentGoalStepStatus.COMPLETED -> "✓"
+                        com.lhy.yumerin.core.model.DelegatedAgentGoalStepStatus.RUNNING -> "▸"
+                        com.lhy.yumerin.core.model.DelegatedAgentGoalStepStatus.FAILED -> "✗"
+                        else -> "·"
+                    }
+                    MiuixText("$mark ${step.title}", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            goal.pendingQuestion?.takeIf { it.isNotBlank() }?.let {
+                MiuixText("等待你的输入：$it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
             }
         }
     }
