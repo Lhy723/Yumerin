@@ -496,21 +496,12 @@ private fun MessageBubble(
     onRetryUser: (() -> Unit)? = null
 ) {
     val isSystem = message.senderType == MessageSenderType.SYSTEM
-    val bubbleShape = when {
-        isSystem -> RoundedCornerShape(YumerinChatTokens.SystemBubbleRadius)
-        isMine -> RoundedCornerShape(
-            topStart = YumerinChatTokens.BubbleRadius,
-            topEnd = YumerinChatTokens.BubbleRadius,
-            bottomStart = YumerinChatTokens.BubbleRadius,
-            bottomEnd = YumerinChatTokens.BubbleTailRadius
-        )
-        else -> RoundedCornerShape(
-            topStart = YumerinChatTokens.BubbleRadius,
-            topEnd = YumerinChatTokens.BubbleRadius,
-            bottomStart = YumerinChatTokens.BubbleTailRadius,
-            bottomEnd = YumerinChatTokens.BubbleRadius
-        )
-    }
+    val bubbleShape = RoundedCornerShape(
+        when {
+            isSystem -> YumerinChatTokens.SystemBubbleRadius
+            else -> YumerinChatTokens.BubbleRadius
+        }
+    )
     val bubbleColor = when {
         isSystem -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
         isMine -> MaterialTheme.colorScheme.primaryContainer

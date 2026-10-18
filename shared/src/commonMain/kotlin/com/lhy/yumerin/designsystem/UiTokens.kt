@@ -126,7 +126,6 @@ object YumerinChatTokens {
     val ComposerFieldRadius = 18.dp
     val BubbleRadius = 20.dp
     val SystemBubbleRadius = 16.dp
-    val BubbleTailRadius = 4.dp
     val MessageGap = 10.dp
     val BubbleInsetHorizontal = 14.dp
     val BubbleInsetVertical = 11.dp
