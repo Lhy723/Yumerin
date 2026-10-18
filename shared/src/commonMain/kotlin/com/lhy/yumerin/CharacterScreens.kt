@@ -42,6 +42,7 @@ internal fun CharactersPage(
     characters: List<CharacterProfile>,
     archivedCharacters: List<CharacterProfile>,
     onCreate: () -> Unit,
+    onImportCard: () -> Unit = {},
     onOpenProfile: (EntityId) -> Unit,
     onEdit: (EntityId) -> Unit,
     onCreateChat: (CharacterProfile) -> Unit
@@ -78,6 +79,11 @@ internal fun CharactersPage(
                                 icon = YumerinAddIcon,
                 contentDescription = "新建角色",
                 onClick = onCreate
+            )
+            MiuixActionIconButton(
+                icon = YumerinMemoryIcon,
+                contentDescription = "导入角色卡",
+                onClick = onImportCard
             )
         }
 

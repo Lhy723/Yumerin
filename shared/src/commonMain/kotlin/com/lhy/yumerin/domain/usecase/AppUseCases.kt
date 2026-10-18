@@ -7,6 +7,7 @@ import com.lhy.yumerin.domain.agent.AgentCapability
 import com.lhy.yumerin.domain.agent.AgentRuntime
 import com.lhy.yumerin.domain.agent.CalculatorCapability
 import com.lhy.yumerin.domain.agent.DelegateTaskCapability
+import com.lhy.yumerin.domain.usecase.ImportCharacterCardUseCase
 import com.lhy.yumerin.domain.agent.CharacterStateCoordinator
 import com.lhy.yumerin.domain.agent.MemoryRecallCapability
 import com.lhy.yumerin.domain.agent.ScheduleLookupCapability
@@ -54,6 +55,7 @@ class AppUseCases(
     val sendChatMessage = SendChatMessageUseCase(characters, chats, groups, memories, models, agentRuntime, memberships, characterStateCoordinator)
     val retryChatResponse = RetryChatResponseUseCase(characters, chats, groups, memories, models, agentRuntime, memberships, characterStateCoordinator)
     val saveCharacter = SaveCharacterUseCase(characters, chats, avatars)
+    val importCharacterCard = ImportCharacterCardUseCase(characters, chats, memories, saveCharacter)
     val observeCharacterRuntimeState = ObserveCharacterRuntimeStateUseCase(characterRuntimeStates)
     val updateCharacterContinuity = UpdateCharacterContinuityUseCase(characterRuntimeStates)
     val observeScheduledAgentGoals = ObserveScheduledAgentGoalsUseCase(agentGoals)

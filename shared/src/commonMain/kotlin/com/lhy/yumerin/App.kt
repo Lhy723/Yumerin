@@ -74,6 +74,7 @@ private sealed interface AppDestination {
     data object SCHEDULES : AppDestination
     data object DATA_MANAGEMENT : AppDestination
     data object AGENT_DEBUG : AppDestination
+    data object CARD_IMPORT : AppDestination
 }
 
 private val AppDestination.bottomPage: AppPage?
@@ -113,6 +114,7 @@ private fun AppDestination.rank(): Int = when (this) {
     AppDestination.CHARACTER_CONTINUITY_LIST -> 17
     is AppDestination.CHARACTER_CONTINUITY -> 18
     AppDestination.AGENT_DEBUG -> 19
+    AppDestination.CARD_IMPORT -> 20
 }
 
 @Composable
@@ -126,6 +128,7 @@ fun App(
     onImportDataRequest: ((onPayload: (String) -> Unit) -> Unit) = {},
     onPickAvatar: ((onSelected: (String?) -> Unit) -> Unit) = { onSelected -> onSelected(null) },
     onPickLocalModel: ((onSelected: (String?) -> Unit) -> Unit) = { onSelected -> onSelected(null) },
+    onPickCardFile: ((onSelected: (ByteArray?) -> Unit) -> Unit) = { onSelected -> onSelected(null) },
     skipAdultConfirmationForDebug: Boolean = false,
     appVersionName: String = "开发版",
     onCheckForUpdates: (suspend () -> AppReleaseMetadata)? = null,
@@ -185,6 +188,7 @@ fun App(
                             onExportData = onExportData,
                             onImportDataRequest = onImportDataRequest,
                             onPickAvatar = onPickAvatar,
+                onPickCardFile = onPickCardFile,
                             onPickLocalModel = onPickLocalModel,
                             skipAdultConfirmationForDebug = skipAdultConfirmationForDebug,
                             appVersionName = appVersionName,
@@ -291,6 +295,7 @@ private fun AppContent(
     onImportDataRequest: ((onPayload: (String) -> Unit) -> Unit),
     onPickAvatar: ((onSelected: (String?) -> Unit) -> Unit),
     onPickLocalModel: ((onSelected: (String?) -> Unit) -> Unit),
+    onPickCardFile: ((onSelected: (ByteArray?) -> Unit) -> Unit),
     skipAdultConfirmationForDebug: Boolean,
     appVersionName: String,
     onCheckForUpdates: (suspend () -> AppReleaseMetadata)?,
@@ -336,6 +341,7 @@ private fun AppContent(
                 AppDestination.SCHEDULES -> AppDestination.SETTINGS
                 AppDestination.DATA_MANAGEMENT -> AppDestination.SETTINGS
             AppDestination.AGENT_DEBUG -> AppDestination.SETTINGS
+            AppDestination.CARD_IMPORT -> AppDestination.CHARACTERS
                 else -> AppDestination.CHAT_LIST
             }
         }
@@ -490,6 +496,7 @@ private fun AppContent(
                                                                                 characters = characters,
                                         archivedCharacters = archivedCharacters,
                                         onCreate = { destination = AppDestination.CHARACTER_EDITOR(null) },
+                                        onImportCard = { destination = AppDestination.CARD_IMPORT },
                                         onOpenProfile = { characterId ->
                                             destination = AppDestination.CHARACTER_PROFILE(characterId)
                                         },
@@ -722,6 +729,12 @@ private fun AppContent(
                                     AppDestination.AGENT_DEBUG -> AgentDebugPage(
                                         diagnostics = useCases.agentRunDiagnostics,
                                         onBack = { destination = AppDestination.SETTINGS }
+                                    )
+                                    AppDestination.CARD_IMPORT -> CardImportPage(
+                                        importCard = useCases.importCharacterCard,
+                                        onPickFile = onPickCardFile,
+                                        onImported = { characterId, _ -> destination = AppDestination.CHARACTER_PROFILE(characterId) },
+                                        onBack = { destination = AppDestination.CHARACTERS }
                                     )
                                     AppDestination.DATA_MANAGEMENT -> DataManagementPage(
                                                                                 graph = graph,

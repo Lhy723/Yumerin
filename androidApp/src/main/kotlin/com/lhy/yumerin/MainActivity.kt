@@ -34,6 +34,7 @@ class MainActivity : ComponentActivity(), KoinComponent {
     private var pendingBackgroundEnable: (() -> Unit)? = null
     private var pendingImport: ((String) -> Unit)? = null
     private var pendingAvatar: ((String?) -> Unit)? = null
+    private var pendingCardFile: ((ByteArray?) -> Unit)? = null
     private var pendingLocalModel: ((String?) -> Unit)? = null
     private val requestNotificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -75,6 +76,17 @@ class MainActivity : ComponentActivity(), KoinComponent {
         val callback = pendingLocalModel
         pendingLocalModel = null
         callback?.invoke(uri?.let { copyToPrivate(it, "model-imports", "model") })
+    }
+    private val openCardDocument = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        val callback = pendingCardFile
+        pendingCardFile = null
+        if (uri == null || callback == null) return@registerForActivityResult
+        val bytes = runCatching {
+            contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        }.getOrNull()
+        callback(bytes)
     }
     private var pendingExportPayload: String? = null
     private var initialChatId by mutableStateOf<String?>(null)
@@ -135,6 +147,10 @@ class MainActivity : ComponentActivity(), KoinComponent {
                 onPickLocalModel = { onSelected ->
                     pendingLocalModel = onSelected
                     openLocalModelDocument.launch(arrayOf("application/octet-stream", "*/*"))
+                },
+                onPickCardFile = { onSelected ->
+                    pendingCardFile = onSelected
+                    openCardDocument.launch(arrayOf("image/png", "application/json", "*/*"))
                 }
             )
         }
