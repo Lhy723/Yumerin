@@ -1,6 +1,13 @@
 package com.lhy.yumerin
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.EaseInOut
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.StartOffset
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -271,6 +278,7 @@ internal fun ChatDetailPage(
                     }
                     MessageBubble(
                         message = message,
+                        reducedMotion = settings.reducedMotionEnabled,
                         isMine = isMine,
                         avatarText = if (isMine) {
                             settings.userName.take(1).ifBlank { "Y" }
@@ -478,6 +486,7 @@ internal fun ChatDetailPage(
 @Composable
 private fun MessageBubble(
     message: ChatMessage,
+    reducedMotion: Boolean,
     isMine: Boolean,
     avatarText: String,
     avatarUri: String?,
@@ -584,16 +593,24 @@ private fun MessageBubble(
                                 )
                             }
                         }
-                        MiuixText(
-                            text = message.text.trim().ifBlank {
-                                when (message.responseState) {
-                                    com.lhy.yumerin.core.model.AiResponseState.GENERATING -> "正在输入…"
-                                    com.lhy.yumerin.core.model.AiResponseState.STOPPED -> "已停止生成"
-                                    else -> ""
-                                }
-                            },
-                            style = MaterialTheme.typography.bodyLarge
-                        )
+                        val isGenerating = message.responseState == com.lhy.yumerin.core.model.AiResponseState.GENERATING
+                        val blankText = message.text.trim().isEmpty()
+                        if (isGenerating && blankText) {
+                            TypingIndicator(reducedMotion = reducedMotion)
+                        } else {
+                            MiuixText(
+                                text = message.text.trim().ifBlank {
+                                    when (message.responseState) {
+                                        com.lhy.yumerin.core.model.AiResponseState.STOPPED -> "已停止生成"
+                                        else -> ""
+                                    }
+                                },
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            if (isGenerating && !reducedMotion) {
+                                StreamingCursor()
+                            }
+                        }
                         message.errorMessage?.let {
                             MiuixText("状态：$it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                         }
@@ -670,4 +687,62 @@ private fun DelegatedGoalProgressCard(goal: com.lhy.yumerin.core.model.Delegated
             }
         }
     }
+}
+
+
+/**
+ * Three-dot pulse shown while the model is thinking (no streamed text yet).
+ * Honors the reduced-motion setting by falling back to a static ellipsis.
+ */
+@Composable
+private fun TypingIndicator(reducedMotion: Boolean) {
+    if (reducedMotion) {
+        MiuixText("正在输入…", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+        return
+    }
+    val transition = rememberInfiniteTransition(label = "typing")
+    Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+        repeat(3) { index ->
+            val alpha by transition.animateFloat(
+                initialValue = 0.25f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 520, easing = androidx.compose.animation.core.EaseInOut),
+                    repeatMode = RepeatMode.Reverse,
+                    initialStartOffset = StartOffset(index * 170)
+                ),
+                label = "dot$index"
+            )
+            Box(
+                modifier = Modifier
+                    .size(7.dp)
+                    .graphicsLayer(alpha = alpha)
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f), CircleShape)
+            )
+        }
+        MiuixText(
+            " 正在输入…",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+        )
+    }
+}
+
+/** Blinking caret appended under streamed text so output feels alive. */
+@Composable
+private fun StreamingCursor() {
+    val transition = rememberInfiniteTransition(label = "cursor")
+    val alpha by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0.1f,
+        animationSpec = infiniteRepeatable(animation = tween(durationMillis = 480), repeatMode = RepeatMode.Reverse),
+        label = "caret"
+    )
+    Box(
+        modifier = Modifier
+            .padding(top = 3.dp)
+            .size(width = 2.dp, height = 15.dp)
+            .graphicsLayer(alpha = alpha)
+            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(1.dp))
+    )
 }
