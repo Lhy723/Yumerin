@@ -200,38 +200,58 @@ private fun RemoteModelsOverview(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = YumerinSpacing.CompactRow),
-                        verticalArrangement = Arrangement.spacedBy(YumerinSpacing.CompactRow)
+                            .padding(vertical = YumerinSpacing.Field),
+                        verticalArrangement = Arrangement.spacedBy(YumerinSpacing.Item)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                MiuixText(profile.displayName, style = MiuixTheme.textStyles.subtitle)
-                                MiuixText(
-                                    "${profile.providerName} · ${profile.modelId}",
-                                    color = MiuixTheme.colorScheme.onSurfaceVariantActions
-                                )
-                                if (isDefault) {
-                                    MiuixText("全局默认", color = MaterialTheme.colorScheme.primary)
+                                Row(
+                                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(YumerinSpacing.Item)
+                                ) {
+                                    MiuixText(profile.displayName, style = MiuixTheme.textStyles.subtitle)
+                                    if (isDefault) {
+                                        MiuixText(
+                                            "全局默认",
+                                            style = MiuixTheme.textStyles.footnote1,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
                                 }
+                                MiuixText(
+                                    text = "${profile.modelId} · ${profile.baseUrl.orEmpty()}",
+                                    style = MiuixTheme.textStyles.footnote1,
+                                    color = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                )
                             }
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
                             MiuixTextButton(
                                 text = "编辑",
-                                onClick = { onEditProfile(profile) }
+                                onClick = { onEditProfile(profile) },
+                                modifier = Modifier.padding(start = YumerinSpacing.Item)
                             )
                             if (!isDefault) {
                                 MiuixTextButton(
                                     text = "设为默认",
                                     onClick = {
                                         onSettingsChanged(settings.copy(defaultModelProfileId = profile.id))
-                                    }
+                                    },
+                                    modifier = Modifier.padding(start = YumerinSpacing.Item)
                                 )
                             }
                             MiuixTextButton(
                                 text = "删除",
-                                onClick = { onDeleteProfile(profile) }
+                                onClick = { onDeleteProfile(profile) },
+                                modifier = Modifier.padding(start = YumerinSpacing.Item)
                             )
                         }
                     }
