@@ -2,8 +2,10 @@ package com.lhy.yumerin
 
 import com.lhy.yumerin.designsystem.YumerinSpacing
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,6 +22,7 @@ import com.lhy.yumerin.core.model.ModelCapability
 import com.lhy.yumerin.core.model.ModelProviderKind
 import com.lhy.yumerin.core.model.newEntityId
 import com.lhy.yumerin.designsystem.OverlayDropdownMenu
+import com.lhy.yumerin.designsystem.YumerinAlertDialog
 import com.lhy.yumerin.designsystem.YumerinButton as MiuixButton
 import com.lhy.yumerin.domain.AppGraph
 import com.lhy.yumerin.domain.repository.ModelConfigurationTestResult
@@ -46,6 +49,9 @@ internal fun ModelsPage(
     onBack: () -> Unit
 ) {
     var editing by remember { mutableStateOf(false) }
+    var editingProfile by remember { mutableStateOf<ModelProfile?>(null) }
+    var deletingProfile by remember { mutableStateOf<ModelProfile?>(null) }
+    val scope = rememberCoroutineScope()
 
     MiuixScaffold(
         modifier = Modifier.fillMaxSize(),
@@ -61,7 +67,7 @@ internal fun ModelsPage(
                 if (editing) {
                     MiuixTextButton(
                         text = "取消",
-                        onClick = { editing = false },
+                        onClick = { editing = false; editingProfile = null },
                         enabled = true
                     )
                 } else {
@@ -73,14 +79,50 @@ internal fun ModelsPage(
                 }
             }
 
+            deletingProfile?.let { profile ->
+                val isDefault = settings.defaultModelProfileId == profile.id
+                val othersExist = profiles.any { it.id != profile.id }
+                YumerinAlertDialog(
+                    onDismissRequest = { deletingProfile = null },
+                    title = { MiuixText(if (isDefault) "不能删除全局默认模型" else "删除模型配置") },
+                    text = {
+                        MiuixText(
+                            if (isDefault) {
+                                if (othersExist) "请先把其他模型设为全局默认，再删除这一个。"
+                                else "这是唯一配置的模型，删除后角色将没有可用模型。"
+                            } else {
+                                "将删除「${profile.displayName}」的连接配置和已保存的 API Key。"
+                            }
+                        )
+                    },
+                    confirmButton = {
+                        if (isDefault) {
+                            TextButton(onClick = { deletingProfile = null }) { MiuixText("知道了") }
+                        } else {
+                            TextButton(
+                                onClick = {
+                                    val target = profile
+                                    deletingProfile = null
+                                    scope.launch { graph.models.deleteProfile(target.id) }
+                                }
+                            ) { MiuixText("删除", color = MaterialTheme.colorScheme.error) }
+                        }
+                    },
+                    dismissButton = if (isDefault) null else {
+                        { TextButton(onClick = { deletingProfile = null }) { MiuixText("取消") } }
+                    }
+                )
+            }
+
             if (editing) {
                 RemoteModelProfileForm(
                     graph = graph,
-                    shouldSetAsDefault = settings.defaultModelProfileId == null,
-                    onSettingsChanged = onSettingsChanged,
                     settings = settings,
-                    onSaved = { editing = false },
-                    onCancel = { editing = false }
+                    shouldSetAsDefault = settings.defaultModelProfileId == null,
+                    existing = editingProfile,
+                    onSettingsChanged = onSettingsChanged,
+                    onSaved = { editing = false; editingProfile = null },
+                    onCancel = { editing = false; editingProfile = null }
                 )
             } else {
                 RemoteModelsOverview(
@@ -88,7 +130,9 @@ internal fun ModelsPage(
                     localArtifactCount = localArtifactCount,
                     settings = settings,
                     onSettingsChanged = onSettingsChanged,
-                    onAddModel = { editing = true },
+                    onAddModel = { editingProfile = null; editing = true },
+                    onEditProfile = { profile -> editingProfile = profile; editing = true },
+                    onDeleteProfile = { profile -> deletingProfile = profile },
                     onOpenLocalModels = onOpenLocalModels
                 )
             }
@@ -103,6 +147,8 @@ private fun RemoteModelsOverview(
     settings: AppSettings,
     onSettingsChanged: (AppSettings) -> Unit,
     onAddModel: () -> Unit,
+    onEditProfile: (ModelProfile) -> Unit,
+    onDeleteProfile: (ModelProfile) -> Unit,
     onOpenLocalModels: () -> Unit
 ) {
     MiuixCardSurface(Modifier.fillMaxWidth()) {
@@ -150,14 +196,43 @@ private fun RemoteModelsOverview(
                 HorizontalDivider()
                 MiuixText("已配置的模型", style = MiuixTheme.textStyles.title3)
                 profiles.forEach { profile ->
-                    Column(verticalArrangement = Arrangement.spacedBy(YumerinSpacing.CompactRow)) {
-                        MiuixText(profile.displayName, style = MiuixTheme.textStyles.subtitle)
-                        MiuixText(
-                            "${profile.providerName} · ${profile.modelId}",
-                            color = MiuixTheme.colorScheme.onSurfaceVariantActions
-                        )
-                        if (settings.defaultModelProfileId == profile.id) {
-                            MiuixText("全局默认", color = MaterialTheme.colorScheme.primary)
+                    val isDefault = settings.defaultModelProfileId == profile.id
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = YumerinSpacing.CompactRow),
+                        verticalArrangement = Arrangement.spacedBy(YumerinSpacing.CompactRow)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                MiuixText(profile.displayName, style = MiuixTheme.textStyles.subtitle)
+                                MiuixText(
+                                    "${profile.providerName} · ${profile.modelId}",
+                                    color = MiuixTheme.colorScheme.onSurfaceVariantActions
+                                )
+                                if (isDefault) {
+                                    MiuixText("全局默认", color = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                            MiuixTextButton(
+                                text = "编辑",
+                                onClick = { onEditProfile(profile) }
+                            )
+                            if (!isDefault) {
+                                MiuixTextButton(
+                                    text = "设为默认",
+                                    onClick = {
+                                        onSettingsChanged(settings.copy(defaultModelProfileId = profile.id))
+                                    }
+                                )
+                            }
+                            MiuixTextButton(
+                                text = "删除",
+                                onClick = { onDeleteProfile(profile) }
+                            )
                         }
                     }
                     if (profile != profiles.last()) HorizontalDivider()
@@ -191,25 +266,26 @@ private fun RemoteModelProfileForm(
     graph: AppGraph,
     settings: AppSettings,
     shouldSetAsDefault: Boolean,
+    existing: ModelProfile?,
     onSettingsChanged: (AppSettings) -> Unit,
     onSaved: () -> Unit,
     onCancel: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    var displayName by remember { mutableStateOf("") }
-    var providerName by remember { mutableStateOf("") }
-    var baseUrl by remember { mutableStateOf("https://api.openai.com/v1") }
-    var modelId by remember { mutableStateOf("") }
+    var displayName by remember { mutableStateOf(existing?.displayName ?: "") }
+    var providerName by remember { mutableStateOf(existing?.providerName ?: "") }
+    var baseUrl by remember { mutableStateOf(existing?.baseUrl ?: "https://api.openai.com/v1") }
+    var modelId by remember { mutableStateOf(existing?.modelId ?: "") }
     var apiKey by remember { mutableStateOf("") }
-    var contextLength by remember { mutableStateOf("") }
-    var temperature by remember { mutableStateOf("") }
-    var topP by remember { mutableStateOf("") }
-    var maxOutputTokens by remember { mutableStateOf("") }
-    var stopSequences by remember { mutableStateOf("") }
-    var visionCapable by remember { mutableStateOf(false) }
-    var audioCapable by remember { mutableStateOf(false) }
-    var toolCallsCapable by remember { mutableStateOf(false) }
-    var streamingCapable by remember { mutableStateOf(true) }
+    var contextLength by remember { mutableStateOf(existing?.contextLength?.toString() ?: "") }
+    var temperature by remember { mutableStateOf(existing?.generationParameters?.temperature?.toString() ?: "") }
+    var topP by remember { mutableStateOf(existing?.generationParameters?.topP?.toString() ?: "") }
+    var maxOutputTokens by remember { mutableStateOf(existing?.generationParameters?.maxOutputTokens?.toString() ?: "") }
+    var stopSequences by remember { mutableStateOf(existing?.generationParameters?.stopSequences?.joinToString(",") ?: "") }
+    var visionCapable by remember { mutableStateOf(existing?.capabilities?.contains(ModelCapability.VISION) == true) }
+    var audioCapable by remember { mutableStateOf(existing?.capabilities?.contains(ModelCapability.AUDIO_IN) == true) }
+    var toolCallsCapable by remember { mutableStateOf(existing?.capabilities?.contains(ModelCapability.TOOL_CALLS) == true) }
+    var streamingCapable by remember { mutableStateOf(existing?.capabilities?.contains(ModelCapability.STREAMING) != false) }
     var showAdvanced by remember { mutableStateOf(false) }
     var modelTestRunning by remember { mutableStateOf(false) }
     var modelTestResult by remember { mutableStateOf<ModelConfigurationTestResult?>(null) }
@@ -217,15 +293,22 @@ private fun RemoteModelProfileForm(
 
     val validBaseUrl = baseUrl.trim().startsWith("https://", ignoreCase = true) ||
         baseUrl.trim().startsWith("http://", ignoreCase = true)
-    val canSubmit = !modelTestRunning && validBaseUrl && modelId.isNotBlank() && apiKey.isNotBlank()
+    val canSubmit = !modelTestRunning && validBaseUrl && modelId.isNotBlank() &&
+        (apiKey.isNotBlank() || existing != null)
 
     MiuixCardSurface(Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(YumerinSpacing.CardInset),
             verticalArrangement = Arrangement.spacedBy(YumerinSpacing.FormField)
         ) {
-            MiuixText("新增远端模型", style = MiuixTheme.textStyles.title2)
-            MiuixText("先填写连接信息。测试连接可选；保存后可用于全局默认或角色单独指定。")
+            MiuixText(if (existing == null) "新增远端模型" else "编辑远端模型", style = MiuixTheme.textStyles.title2)
+            MiuixText(
+                if (existing == null) {
+                    "先填写连接信息。测试连接可选；保存后可用于全局默认或角色单独指定。"
+                } else {
+                    "修改连接信息或参数。API Key 留空表示保留已保存的凭据。"
+                }
+            )
             MiuixText("连接信息", style = MiuixTheme.textStyles.subtitle)
 
             MiuixTextField(
@@ -260,7 +343,7 @@ private fun RemoteModelProfileForm(
                 value = apiKey,
                 onValueChange = { apiKey = it; modelTestResult = null; saveError = null },
                 modifier = Modifier.fillMaxWidth(),
-                label = "API Key",
+                label = if (existing == null) "API Key" else "API Key（留空保留）",
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation()
             )
@@ -327,8 +410,8 @@ private fun RemoteModelProfileForm(
                 )
                 MiuixButton(
                     onClick = {
-                        val profileId = newEntityId("model")
-                        val credentialAlias = newEntityId("credential")
+                        val profileId = existing?.id ?: newEntityId("model")
+                        val credentialAlias = existing?.credentialAlias ?: newEntityId("credential")
                         val now = nowMillis()
                         val customContextLength = contextLength.toIntOrNull()
                         val profile = ModelProfile(
@@ -350,7 +433,7 @@ private fun RemoteModelProfileForm(
                             localModelId = null,
                             localModelVersion = null,
                             enabled = true,
-                            createdAt = now,
+                            createdAt = existing?.createdAt ?: now,
                             updatedAt = now,
                             capabilities = buildSet {
                                 if (visionCapable) add(ModelCapability.VISION)
@@ -361,7 +444,10 @@ private fun RemoteModelProfileForm(
                         )
                         scope.launch {
                             runCatching {
-                                graph.credentials.save(credentialAlias, apiKey)
+                                // An empty key in edit mode keeps the stored credential.
+                                if (apiKey.isNotBlank() || existing == null) {
+                                    graph.credentials.save(credentialAlias, apiKey)
+                                }
                                 graph.models.saveProfile(profile)
                                 if (shouldSetAsDefault) {
                                     onSettingsChanged(settings.copy(defaultModelProfileId = profileId))
